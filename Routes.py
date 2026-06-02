@@ -1,11 +1,11 @@
-from typing import Annotated, TypeVar, Generic
+from typing import Annotated, Optional, TypeVar, Generic
 from datetime import datetime
-from fastapi import Depends, FastAPI, HTTPException
+from fastapi import Depends, FastAPI, HTTPException, Request, Query
 from fastapi.concurrency import asynccontextmanager
 from pydantic import BaseModel
 from random import randint
 from sqlalchemy import create_engine
-from sqlmodel import Field, SQLModel, Session, delete, select
+from sqlmodel import Field, SQLModel, Session, delete, func, select
 
 # Database file and url to create
 sqlite_file_name = "database.db"
@@ -37,21 +37,22 @@ T = TypeVar('T')
 class Response(BaseModel, Generic[T]):
     data: T
     
+class PaginatedResponse(BaseModel, Generic[T]):
+    data: T
+    next: Optional[str]
+    prev: Optional[str]
+    count: int
+    
 # Response model for creating/udpating
 class TaskCreate(SQLModel):
     task_name : str = Field(index=True)
     is_done : bool = Field(default=False)
     
+    
 # Create database on startup with test tables
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     create_db_and_tables()
-    # with Session(engine) as session:
-    #     if not session.exec(select(Task)).first():
-    #         # session.add_all([
-    #         #     Task
-    #         # ])
-    #         # session.commit()
     yield
 
 # Initialize the FastAPI app
@@ -63,10 +64,42 @@ async def home():
     return {"Status: ": "Task Manager API is running!"}
 
 # Read all tasks from database
-@taskManager.get("/tasks", response_model=Response[list[Task]])
-async def read_tasks(session: SessionDep):
-    all_tasks = session.exec(select(Task)).all()
-    return {"data" : all_tasks}
+@taskManager.get("/tasks", response_model=PaginatedResponse[list[Task]])
+async def read_tasks(request : Request, session : SessionDep, page : int = Query(default=1)):
+    
+    if page <= 1:
+        page = 1
+    
+    limit = 5
+    offset = (page - 1) * limit
+    
+    all_tasks = session.exec(
+        select(Task)
+        .order_by(Task.task_id)
+        .offset(offset)
+        .limit(limit)
+        ).all() #type: ignore
+    
+    
+    total = session.exec(select(func.count()).select_from(Task)).one()
+    
+    base_url = str(request.url).split('?')[0]
+    if (offset + limit) < total:
+        next_url = f"{base_url}?page={page + 1}"
+    else:
+        next_url = None
+        
+    if page > 1:
+        prev_url = f"{base_url}?page={page - 1}"
+    else:
+        prev_url = None
+    
+    return {
+        "data" : all_tasks,
+        "count" : total,
+        "next" : next_url,
+        "prev" : prev_url
+    }
 
 # Read task with ID
 @taskManager.get("/tasks/{task_id}", response_model=Response[Task])
