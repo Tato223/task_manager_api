@@ -41,7 +41,6 @@ class PaginatedResponse(BaseModel, Generic[T]):
     data: T
     next: Optional[str]
     prev: Optional[str]
-    count: int
     
 # Response model for creating/udpating
 class TaskCreate(SQLModel):
@@ -65,38 +64,26 @@ async def home():
 
 # Read all tasks from database
 @taskManager.get("/tasks", response_model=PaginatedResponse[list[Task]])
-async def read_tasks(request : Request, session : SessionDep, page : int = Query(default=1)):
-    
-    if page <= 1:
-        page = 1
-    
-    limit = 5
-    offset = (page - 1) * limit
+async def read_tasks(request : Request, session : SessionDep, offset: int = Query(default=0, ge=0), limit : int = Query(default=20)):
     
     all_tasks = session.exec(
         select(Task)
         .order_by(Task.task_id)
         .offset(offset)
         .limit(limit)
-        ).all() #type: ignore
-    
-    
-    total = session.exec(select(func.count()).select_from(Task)).one()
+        ).all()
     
     base_url = str(request.url).split('?')[0]
-    if (offset + limit) < total:
-        next_url = f"{base_url}?page={page + 1}"
-    else:
-        next_url = None
+    
+    next_url = f"{base_url}?offset={offset + limit}&limit{limit}"
         
-    if page > 1:
-        prev_url = f"{base_url}?page={page - 1}"
+    if offset > 0:
+        prev_url = f"{base_url}?offset={max(0, offset - limit)}&limit={limit}"
     else:
         prev_url = None
     
     return {
         "data" : all_tasks,
-        "count" : total,
         "next" : next_url,
         "prev" : prev_url
     }
