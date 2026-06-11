@@ -1,11 +1,9 @@
-from typing import Annotated, Optional, TypeVar, Generic
-from datetime import datetime
+from modules import Task, TaskCreate, PaginatedResponse, Response
+from typing import Annotated
 from fastapi import Depends, FastAPI, HTTPException, Request, Query
 from fastapi.concurrency import asynccontextmanager
-from pydantic import BaseModel
-from random import randint
 from sqlalchemy import create_engine
-from sqlmodel import Field, SQLModel, Session, delete, func, select
+from sqlmodel import SQLModel, Session, delete, select
 
 # Database file and url to create
 sqlite_file_name = "database.db"
@@ -28,36 +26,6 @@ def get_session():
 
 
 SessionDep = Annotated[Session, Depends(get_session)]
-
-
-# Task object for SQLite
-class Task(SQLModel, table=True):
-    task_id: int | None = Field(default=None, primary_key=True)
-    task_name: str = Field(
-        index=True,
-    )
-    # due_date : datetime | None = None
-    is_done: bool = False
-
-
-# Generic response model
-T = TypeVar("T")
-
-
-class Response(BaseModel, Generic[T]):
-    data: T
-
-
-class PaginatedResponse(BaseModel, Generic[T]):
-    data: T
-    next: Optional[str]
-    prev: Optional[str]
-
-
-# Response model for creating/udpating
-class TaskCreate(SQLModel):
-    task_name: str = Field(index=True)
-    is_done: bool = Field(default=False)
 
 
 # Create database on startup with test tables
@@ -87,7 +55,7 @@ async def read_tasks(
 ):
 
     all_tasks = session.exec(
-        select(Task).order_by(Task.task_id).offset(offset).limit(limit) # type: ignore
+        select(Task).order_by(Task.task_id).offset(offset).limit(limit)  # type: ignore
     ).all()
 
     base_url = str(request.url).split("?")[0]
@@ -147,7 +115,7 @@ async def update_task_status(task_id: int, session: SessionDep):
 @taskManager.delete("/tasks/last", response_model=Response[list[Task]])
 async def remove_last_task(session: SessionDep):
 
-    last_task = session.exec(select(Task).order_by(Task.task_id.desc())).first() # type: ignore
+    last_task = session.exec(select(Task).order_by(Task.task_id.desc())).first()  # type: ignore
 
     if not last_task:
         raise HTTPException(404, "Not found! -- no tasks to delete")
@@ -155,7 +123,7 @@ async def remove_last_task(session: SessionDep):
     session.delete(last_task)
     session.commit()
 
-    remaining_tasks = session.exec(select(Task).order_by(Task.task_id)).all() # type: ignore
+    remaining_tasks = session.exec(select(Task).order_by(Task.task_id)).all()  # type: ignore
 
     return {"data": remaining_tasks}
 
