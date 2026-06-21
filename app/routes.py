@@ -4,6 +4,8 @@ from fastapi import Depends, FastAPI, HTTPException, Request, Query
 from fastapi.concurrency import asynccontextmanager
 from sqlalchemy import create_engine
 from sqlmodel import SQLModel, Session, delete, select
+from fastapi.middleware.cors import CORSMiddleware
+
 
 # Database file and url to create
 sqlite_file_name = "database.db"
@@ -37,6 +39,14 @@ async def lifespan(app: FastAPI):
 
 # Initialize the FastAPI app
 taskManager = FastAPI(root_path="/api/v1", lifespan=lifespan)
+
+taskManager.add_middleware(
+    CORSMiddleware,
+    allow_origins=['http://localhost:5500', 'http://127.0.0.1:5500'],
+    allow_credentials=True,
+    allow_methods=["POST", "PATCH", "GET", "DELETE"],
+    allow_headers=["*"]
+)
 
 
 # Define a route for the root URL ("/") that returns a simple JSON response
