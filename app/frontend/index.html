@@ -1,14 +1,33 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
-    
-    <link href="style.css">
-    <script src="app.js"></script>
+    <title>Priora Task Manager</title>
+
+    <link rel="StyleSheet" href="style.css">
+    <script src="app.js" defer="true"></script>
 </head>
+
 <body>
-    
+    <div class="create-task">
+        <h1 class="welcome"> - Welcome to Priora! - </h1>
+        <h2 class="tagline"> Prioritze what matters. </h2>
+
+        <form class="input-form">
+            <label for="task"> Enter a name for your task. </label>
+            <input type="text" class="input-form__text" id="task">
+            <input class="input-form__submit-button" type="submit">
+        </form>
+
+    </div>
+
+    <div class="task-display">
+        <h2 class="task-display__header"> All Tasks </h2>
+        <div class="task-display__container"></div>
+    </div>
+
 </body>
+
 </html>

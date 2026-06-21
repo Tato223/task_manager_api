@@ -70,7 +70,7 @@ async def read_tasks(
 
     base_url = str(request.url).split("?")[0]
 
-    next_url = f"{base_url}?offset={offset + limit}&limit{limit}"
+    next_url = f"{base_url}?offset={offset + limit}&limit={limit}"
 
     if offset > 0:
         prev_url = f"{base_url}?offset={max(0, offset - limit)}&limit={limit}"
