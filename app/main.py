@@ -38,9 +38,9 @@ async def lifespan(app: FastAPI):
 
 
 # Initialize the FastAPI app
-taskManager = FastAPI(root_path="/api/v1", lifespan=lifespan)
+app = FastAPI(root_path="/api/v1", lifespan=lifespan)
 
-taskManager.add_middleware(
+app.add_middleware(
     CORSMiddleware,
     allow_origins=['http://localhost:5500', 'http://127.0.0.1:5500'],
     allow_credentials=True,
@@ -50,13 +50,13 @@ taskManager.add_middleware(
 
 
 # Define a route for the root URL ("/") that returns a simple JSON response
-@taskManager.get("/")
+@app.get("/")
 async def home():
     return {"Status: ": "Task Manager API is running!"}
 
 
 # Read all tasks from database
-@taskManager.get("/tasks", response_model=PaginatedResponse[list[Task]])
+@app.get("/tasks", response_model=PaginatedResponse[list[Task]])
 async def read_tasks(
     request: Request,
     session: SessionDep,
@@ -81,7 +81,7 @@ async def read_tasks(
 
 
 # Read task with ID
-@taskManager.get("/tasks/{task_id}", response_model=Response[Task])
+@app.get("/tasks/{task_id}", response_model=Response[Task])
 async def read_task_by_id(task_id: int, session: SessionDep):
 
     this_task = session.get(Task, task_id)
@@ -92,7 +92,7 @@ async def read_task_by_id(task_id: int, session: SessionDep):
 
 
 # Create a new task
-@taskManager.post("/tasks", response_model=Response[Task])
+@app.post("/tasks", response_model=Response[Task])
 async def create_task(task: TaskCreate, session: SessionDep):
 
     # Pass in TaskCreate object which omits automatic fields
@@ -105,7 +105,7 @@ async def create_task(task: TaskCreate, session: SessionDep):
 
 
 # Change is_done value of a task
-@taskManager.patch("/tasks/{task_id}", response_model=Response[Task])
+@app.patch("/tasks/{task_id}", response_model=Response[Task])
 async def update_task_status(task_id: int, session: SessionDep):
 
     updated_task = session.get(Task, task_id)
@@ -122,7 +122,7 @@ async def update_task_status(task_id: int, session: SessionDep):
 
 
 # Delete the last task
-@taskManager.delete("/tasks/last", response_model=Response[list[Task]])
+@app.delete("/tasks/last", response_model=Response[list[Task]])
 async def remove_last_task(session: SessionDep):
 
     last_task = session.exec(select(Task).order_by(Task.task_id.desc())).first()  # type: ignore
@@ -139,7 +139,7 @@ async def remove_last_task(session: SessionDep):
 
 
 # Delete specific task
-@taskManager.delete("/tasks/{task_id}", response_model=Response[list[Task]])
+@app.delete("/tasks/{task_id}", response_model=Response[list[Task]])
 async def remove_specific_task(task_id: int, session: SessionDep):
 
     task_to_delete = session.get(Task, task_id)
@@ -155,7 +155,7 @@ async def remove_specific_task(task_id: int, session: SessionDep):
 
 
 # Clear the task list
-@taskManager.delete("/tasks")
+@app.delete("/tasks")
 async def clear_tasks(session: SessionDep):
 
     session.exec(delete(Task))
