@@ -1,4 +1,4 @@
-from modules import Task, TaskCreate, PaginatedResponse, Response
+from .modules import Task, TaskCreate, PaginatedResponse, Response
 from typing import Annotated
 from fastapi import Depends, FastAPI, HTTPException, Request, Query
 from fastapi.concurrency import asynccontextmanager
