@@ -1,5 +1,7 @@
 # FastAPI Task Manager API
 
+https://priora-yeau.onrender.com/
+
 A RESTful task management API built with FastAPI, SQLModel, and SQLite. This project allows users to create, retrieve, update, and delete tasks while demonstrating backend development concepts such as database integration, pagination, and request validation.
 
 ## Features
@@ -105,3 +107,4 @@ http://localhost:8000/docs
 - API pagination techniques
 - HTTP requests and JSON
 - Pydantic Objects
+- Deployment through Render
