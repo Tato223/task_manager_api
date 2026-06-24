@@ -154,4 +154,5 @@ def menuSelect():
 
 
 while True:
-    menuSelect()
+    if __name__ == "__main__":
+        menuSelect()
