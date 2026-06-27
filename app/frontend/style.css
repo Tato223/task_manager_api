@@ -1,11 +1,15 @@
 * {
-    margin: 0px;
-    padding: 0px;
+  margin: 0px;
+  padding: 0px;
 }
 
 body {
-    background: #6e6e6e;
-    background: radial-gradient(circle, rgba(110, 110, 110, 1) 0%, rgba(54, 54, 54, 1) 100%);
+  background: #6e6e6e;
+  background: radial-gradient(
+    circle,
+    rgba(110, 110, 110, 1) 0%,
+    rgba(54, 54, 54, 1) 100%
+  );
 }
 
 h1,
@@ -16,74 +20,120 @@ h5,
 h6,
 p,
 label {
-    color: aliceblue;
-    -webkit-text-stroke: 1.3px black;
-    paint-order: stroke fill;
+  color: aliceblue;
+  -webkit-text-stroke: 1.3px black;
+  paint-order: stroke fill;
 }
 
 .create-task {
-
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 }
 
 .welcome,
 .tagline {
-    text-align: center;
+  text-align: center;
 }
 
 .welcome {
-    padding-top: 3%;
+  padding-top: 3%;
 }
 
 .tagline {
-    font-size: 1.2em;
-    color: rgb(214, 214, 214);
-    padding-top: .1%;
+  font-size: 1.2em;
+  color: rgb(214, 214, 214);
+  padding-top: 0.1%;
 }
 
 .input-form {
+  padding-top: 3%;
+  margin-top: 2%;
+  align-self: center;
+  justify-self: center;
 
-    padding-top: 3%;
-    margin-top: 2%;
-    align-self: center;
-    justify-self: center;
+  width: 40%;
+  height: 10%;
 
-    width: 40%;
-    height: 10%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
 
-    display: flex;
-    flex-direction: column;
-    justify-content: center;
-
-    outline: 2px solid rgb(142, 142, 142);
-    border-radius: 12px;
-    padding: 2%;
-    background-color: rgb(69, 70, 70);
+  outline: 2px solid rgb(142, 142, 142);
+  border-radius: 12px;
+  padding: 2%;
+  background-color: rgb(69, 70, 70);
 }
 
 .input-form__submit-button {
-    margin-top: 5px;
-    width: 10%;
+  margin-top: 5px;
+  width: 10%;
 }
 
 .task-display__container {
-    background-color: rgb(145, 145, 145);
-    height: 300px;
-    width: 60%;
-    margin-bottom: 10%;
+  background-color: rgb(215, 221, 227);
+  height: 350px;
+  width: 60%;
+  margin-bottom: 5%;
 
-    align-self: center;
-    justify-self: center;
-    display: flex;
-    flex-direction: row;
+  align-self: center;
+  justify-self: center;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
 
-    border-radius: 12px;
+  border-radius: 12px;
+
+  overflow-x: hidden;
+  overflow-y: auto;
 }
 
 .task-display__header {
-    margin-top: 2.5%;
-    margin-left: 20%;
+  margin-top: 2.5%;
+  margin-left: 20%;
+}
+
+.task {
+  display: flex;
+  flex-direction: row;
+  flex-wrap: nowrap;
+  align-items: center;
+  justify-items: baseline;
+
+  padding: 2%;
+  padding-right: none;
+  background-color: aliceblue;
+  height: 15px;
+  width: 100%;
+
+  border-radius: none;
+
+  overflow: hidden;
+
+  padding-right: 5%;
+}
+
+.task__buttons {
+  display: flex;
+  flex-direction: row;
+  padding: 50px;
+  padding-left: none;
+  gap: 20%;
+  margin-left: auto;
+}
+
+.task__delete-btn {
+  padding: 10%;
+  border-radius: 4px;
+  background-color: rgb(249, 72, 72);
+  color: white;
+}
+
+.task__delete-btn:hover {
+  cursor: pointer;
+}
+
+.task__name {
+  text-align: left;
+  min-width: 30%;
 }
