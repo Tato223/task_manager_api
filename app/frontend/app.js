@@ -16,6 +16,7 @@ const pager = document.querySelector(".pager");
 const prevButton = document.querySelector(".pager__prev");
 const nextButton = document.querySelector(".pager__next");
 const pagerStatus = document.querySelector(".pager__status");
+const clearCompletedButton = document.querySelector(".tasks__clear");
 
 let currentOffset = 0;
 let hasNextPage = false;
@@ -180,7 +181,6 @@ form.addEventListener("submit", async (event) => {
 
     taskInput.value = "";
 
-    await loadPage(currentOffset);
     if (hasNextPage) {
       showNotice("Task added. It's on a later page.", false);
     }
@@ -217,10 +217,24 @@ taskList.addEventListener("change", async (event) => {
     checkbox.checked = apiResponse.data.is_done;
   } catch (error) {
     console.log("Error: ", error);
-    checkbox.checked = !checkbox.checked; // put it back the way it was
+    checkbox.checked = !checkbox.checked;
     showNotice("Couldn't update that task. Try again.");
   }
   updateSummary();
+});
+
+// Clear all completed tasks
+clearCompletedButton.addEventListener("click", async () => {
+  try {
+    const response = await fetch(`${API_URL}/tasks/completed/`, {
+      method: "DELETE",
+    });
+    if (!response.ok)
+      throw new Error(`Server responded with ${response.status}`);
+  } catch (error) {
+    console.log("Error: ", error);
+    showNotice("Couldn't clear completed tasks. Try again.");
+  }
 });
 
 // Delete a task (event delegation on the list)
@@ -246,7 +260,6 @@ taskList.addEventListener("click", async (event) => {
     taskItem.classList.add("task--removing");
     setTimeout(() => {
       taskItem.remove();
-      loadPage(currentOffset);
     }, 160);
   } catch (error) {
     console.log("Error: ", error);

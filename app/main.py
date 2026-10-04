@@ -151,6 +151,15 @@ async def remove_specific_task(task_id: int, session: SessionDep):
     return {"data": remaining_tasks}
 
 
+@app.delete("/tasks/completed/", status_code=204)
+async def clear_completed_tasks(session: SessionDep):
+
+    session.exec(delete(Task).where(Task.is_done == True))  # type: ignore
+    session.commit()
+
+    raise HTTPException(204, "Completed tasks have been cleared.")
+
+
 # Clear the task list
 @app.delete("/tasks")
 async def clear_tasks(session: SessionDep):

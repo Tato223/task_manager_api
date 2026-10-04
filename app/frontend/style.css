@@ -14,6 +14,7 @@
   --accent-strong: #095a41;
   --on-accent: #ffffff;
   --danger: #b3261e;
+  --danger-hover: #af332d;
   --danger-tint: #fbe9e7;
   --ring: rgba(11, 110, 79, 0.28);
 
@@ -62,6 +63,11 @@ body {
   font-size: 1rem;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
+}
+
+*::selection {
+  background: var(--accent);
+  color: var(--on-accent);
 }
 
 button,
@@ -192,6 +198,25 @@ input {
   padding: 1.125rem 1.25rem 1rem;
 }
 
+.tasks__clear {
+  background: var(--danger);
+  color: var(--on-danger);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 1%;
+  transition: background-color 0.15s;
+}
+
+.tasks__clear:hover {
+  background: var(--danger-hover);
+  cursor: pointer;
+  transition: background-color 0.15s;
+}
+
+.tasks__clear:active {
+  transform: translateY(1px);
+}
+
 .tasks__title {
   font-size: 1.125rem;
   font-weight: 600;
@@ -310,9 +335,9 @@ input {
   min-width: 0;
   padding: 0.875rem 0 0.875rem 1.25rem;
   cursor: pointer;
+
 }
 
-/* Real checkbox stays in the DOM for keyboard and screen readers */
 .task__toggle {
   position: absolute;
   width: 1px;
