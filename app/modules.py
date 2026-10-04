@@ -9,12 +9,13 @@ class Task(SQLModel, table=True):
     task_name: str = Field(
         index=True,
     )
-    # due_date : datetime | None = None
     is_done: bool = False
 
 
 # Generic response model
 T = TypeVar("T")
+
+
 class Response(BaseModel, Generic[T]):
     data: T
 

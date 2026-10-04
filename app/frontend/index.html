@@ -4,34 +4,73 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Priora Task Manager</title>
+    <title>Priora</title>
 
-    <link rel="StyleSheet" href="style.css">
-    <script src="app.js" defer="true"></script>
+    <link rel="icon"
+        href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='9' fill='%230b6e4f'/%3E%3Cpath d='M9 16.5l4.8 4.8L23 11.5' fill='none' stroke='%23fff' stroke-width='3' stroke-linecap='round' stroke-linejoin='round'/%3E%3C/svg%3E">
+
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,500;12..96,600;12..96,700&display=swap">
+
+    <link rel="stylesheet" href="style.css">
+    <script src="app.js" defer></script>
 </head>
 
 <body>
-    <div class="create-task">
-        <h1 class="welcome"> - Welcome to Priora! - </h1>
-        <h2 class="tagline"> Prioritze what matters. </h2>
+    <main class="app">
 
-        <form class="input-form">
-            <label for="task"> Enter a name for your task. </label>
-            <input type="text" class="input-form__text" id="task">
-            <input class="input-form__submit-button" type="submit">
+        <header class="masthead">
+            <h1 class="masthead__title">Priora</h1>
+            <p class="masthead__tagline">Prioritize what matters.</p>
+        </header>
+
+        <form class="composer">
+            <label class="visually-hidden" for="task-input">Task name</label>
+            <input class="composer__input" id="task-input" type="text" placeholder="What needs doing?"
+                autocomplete="off" maxlength="120" required>
+            <button class="composer__submit" type="submit">Add task</button>
         </form>
 
-    </div>
+        <p class="notice" role="alert" hidden></p>
 
-    <div class="task-display">
+        <section class="tasks" aria-labelledby="tasks-heading">
+            <div class="tasks__header">
+                <h2 class="tasks__title" id="tasks-heading" tabindex="-1">Tasks</h2>
+                <p class="tasks__summary" aria-live="polite"></p>
+            </div>
+            <div class="progress" aria-hidden="true">
+                <div class="progress__fill"></div>
+            </div>
 
-        <h2 class="task-display__header"> All Tasks </h2>
+            <ul class="task-list"></ul>
+            <p class="task-list__message" role="status">Loading tasks…</p>
 
-        <div class="task-display__container">
+            <nav class="pager" aria-label="Task pages" hidden>
+                <button class="pager__button pager__prev" type="button">Previous</button>
+                <p class="pager__status" aria-live="polite"></p>
+                <button class="pager__button pager__next" type="button">Next</button>
+            </nav>
+        </section>
 
-        </div>
-    </div>
+    </main>
 
+    <template id="task-template">
+        <li class="task">
+            <label class="task__label">
+                <input class="task__toggle" type="checkbox">
+                <span class="task__box" aria-hidden="true"></span>
+                <span class="task__name"></span>
+            </label>
+            <button class="task__delete" type="button">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                    stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                    <path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6" />
+                </svg>
+            </button>
+        </li>
+    </template>
 </body>
 
 </html>
