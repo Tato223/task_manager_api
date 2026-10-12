@@ -1,6 +1,6 @@
-from modules import Task, TaskCreate, PaginatedResponse, Response
+from modules import Task, TaskCreate, PaginatedResponse, Response, User, UserCreate
 from typing import Annotated
-from fastapi import Depends, FastAPI, HTTPException, Request, Query
+from fastapi import Depends, FastAPI, HTTPException, Header, Request, Query
 from fastapi.concurrency import asynccontextmanager
 from sqlalchemy import create_engine
 from sqlmodel import SQLModel, Session, delete, select
@@ -57,13 +57,20 @@ async def home():
 async def read_tasks(
     request: Request,
     session: SessionDep,
+    x_user_id: str = Header(),
     offset: int = Query(default=0, ge=0),
     limit: int = Query(default=20),
 ):
 
-    all_tasks = session.exec(
-        select(Task).order_by(Task.task_id).offset(offset).limit(limit)  # type: ignore
-    ).all()
+    try:
+        all_tasks = session.exec(
+            select(Task).where(Task.task_owner_id == x_user_id).order_by(Task.task_id).offset(offset).limit(limit)  # type: ignore
+        ).all()
+
+        print(all_tasks)
+
+    except Exception as e:
+        raise HTTPException(500, "Internal Server Error")
 
     base_url = str(request.url).split("?")[0]
 
@@ -90,10 +97,17 @@ async def read_task_by_id(task_id: int, session: SessionDep):
 
 # Create a new task
 @app.post("/tasks", response_model=Response[Task])
-async def create_task(task: TaskCreate, session: SessionDep):
+async def create_task(
+    task: TaskCreate,
+    session: SessionDep,
+    x_user_id: str = Header(),
+):
 
     # Pass in TaskCreate object which omits automatic fields
     db_task = Task.model_validate(task)
+    db_task.task_owner_id = x_user_id
+    owner = session.get(User, x_user_id)
+
     session.add(db_task)
     session.commit()
     session.refresh(db_task)
@@ -103,13 +117,19 @@ async def create_task(task: TaskCreate, session: SessionDep):
 
 # Change is_done value of a task
 @app.patch("/tasks/{task_id}", response_model=Response[Task])
-async def update_task_status(task_id: int, session: SessionDep):
+async def update_task_status(
+    task_id: int,
+    session: SessionDep,
+    x_user_id: str = Header(),
+):
 
     updated_task = session.get(Task, task_id)
-    print(updated_task)
 
     if not updated_task:
         raise HTTPException(404, "Not found - Task does not exist")
+
+    if updated_task.task_owner_id != x_user_id:
+        raise HTTPException(403, "Forbidden - You are not the owner of this task")
 
     updated_task.is_done = not updated_task.is_done
     session.commit()
@@ -120,12 +140,15 @@ async def update_task_status(task_id: int, session: SessionDep):
 
 # Delete the last task
 @app.delete("/tasks/last", response_model=Response[list[Task]])
-async def remove_last_task(session: SessionDep):
+async def remove_last_task(session: SessionDep, x_user_id: str = Header()):
 
     last_task = session.exec(select(Task).order_by(Task.task_id.desc())).first()  # type: ignore
 
     if not last_task:
         raise HTTPException(404, "Not found! -- no tasks to delete")
+
+    if last_task.task_owner_id != x_user_id:
+        raise HTTPException(403, "Forbidden - You are not the owner of this task")
 
     session.delete(last_task)
     session.commit()
@@ -137,11 +160,16 @@ async def remove_last_task(session: SessionDep):
 
 # Delete specific task
 @app.delete("/tasks/{task_id}", response_model=Response[list[Task]])
-async def remove_specific_task(task_id: int, session: SessionDep):
+async def remove_specific_task(
+    task_id: int, session: SessionDep, x_user_id: str = Header()
+):
 
     task_to_delete = session.get(Task, task_id)
     if not task_to_delete:
         raise HTTPException(404, "Not found! -- task does not exist")
+
+    if task_to_delete.task_owner_id != x_user_id:
+        raise HTTPException(403, "Forbidden - You are not the owner of this task")
 
     session.delete(task_to_delete)
     session.commit()
@@ -152,7 +180,7 @@ async def remove_specific_task(task_id: int, session: SessionDep):
 
 
 @app.delete("/tasks/completed/", status_code=204)
-async def clear_completed_tasks(session: SessionDep):
+async def clear_completed_tasks(session: SessionDep, x_user_id: str = Header()):
 
     session.exec(delete(Task).where(Task.is_done == True))  # type: ignore
     session.commit()
@@ -162,7 +190,7 @@ async def clear_completed_tasks(session: SessionDep):
 
 # Clear the task list
 @app.delete("/tasks")
-async def clear_tasks(session: SessionDep):
+async def clear_tasks(session: SessionDep, x_user_id: str = Header()):
 
     session.exec(delete(Task))
     session.commit()
@@ -171,3 +199,20 @@ async def clear_tasks(session: SessionDep):
 
 
 print("Successfully compiled!")
+
+
+@app.post("/users")
+async def create_user(user: UserCreate, session: SessionDep):
+    db_user = User.model_validate(user)
+    session.add(db_user)
+    session.commit()
+    session.refresh(db_user)
+    return {"data": db_user}
+
+
+@app.get("/users/{user_id}", response_model=Response[User])
+async def read_user_by_id(user_id: str, session: SessionDep):
+    db_user = session.get(User, user_id)
+    if not db_user:
+        raise HTTPException(404, "Not found - User does not exist")
+    return {"data": db_user}

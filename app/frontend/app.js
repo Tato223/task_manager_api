@@ -1,6 +1,32 @@
-require("dotenv").config();
+import { config } from "../config.js";
+const API_URL = config.API_URL;
 
-const API_URL = process.env.API_URL;
+// ---------- User ID Generation ----------
+
+function generateUserID() {
+  const id = new Uint32Array(1);
+  crypto.getRandomValues(id);
+  return id[0].toString(36);
+}
+
+if (!localStorage.getItem("user_id")) {
+  localStorage.setItem("user_id", generateUserID());
+
+  try {
+    const response = await fetch(`${API_URL}/users/`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({ user_id: local_id }),
+    });
+  } catch (error) {
+    console.error("Error creating user:", error);
+  }
+}
+
+const local_id = localStorage.getItem("user_id");
+
 const PAGE_LIMIT = 10;
 
 const tasksPanel = document.querySelector(".tasks");
@@ -96,6 +122,11 @@ async function loadPage(offset) {
   try {
     const response = await fetch(
       `${API_URL}/tasks?offset=${offset}&limit=${PAGE_LIMIT + 1}`,
+      {
+        headers: {
+          "X-User-ID": local_id,
+        },
+      },
     );
     if (!response.ok)
       throw new Error(`Server responded with ${response.status}`);
@@ -172,10 +203,12 @@ form.addEventListener("submit", async (event) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        "X-User-ID": local_id,
       },
       body: JSON.stringify({
         task_name: newTaskName,
         is_done: false,
+        task_owner_id: local_id,
       }),
     });
     if (!response.ok)
@@ -210,6 +243,9 @@ taskList.addEventListener("change", async (event) => {
   try {
     const response = await fetch(`${API_URL}/tasks/${taskId}`, {
       method: "PATCH",
+      headers: {
+        "X-User-ID": local_id,
+      },
     });
     if (!response.ok)
       throw new Error(`Server responded with ${response.status}`);
@@ -228,6 +264,9 @@ clearCompletedButton.addEventListener("click", async () => {
   try {
     const response = await fetch(`${API_URL}/tasks/completed/`, {
       method: "DELETE",
+      headers: {
+        "X-User-ID": local_id,
+      },
     });
     if (!response.ok)
       throw new Error(`Server responded with ${response.status}`);
@@ -252,6 +291,9 @@ taskList.addEventListener("click", async (event) => {
       `${API_URL}/tasks/${taskItem.dataset.taskId}`,
       {
         method: "DELETE",
+        headers: {
+          "X-User-ID": local_id,
+        },
       },
     );
     if (!response.ok)
