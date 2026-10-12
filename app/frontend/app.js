@@ -1,4 +1,6 @@
-const API_URL = "http://127.0.0.1:8000";
+require("dotenv").config();
+
+const API_URL = process.env.API_URL;
 const PAGE_LIMIT = 10;
 
 const tasksPanel = document.querySelector(".tasks");
