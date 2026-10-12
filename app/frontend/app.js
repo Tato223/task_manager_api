@@ -204,7 +204,6 @@ taskList.addEventListener("change", async (event) => {
   const taskId = checkbox.closest(".task").dataset.taskId;
 
   clearNotice();
-  updateSummary();
 
   try {
     const response = await fetch(`${API_URL}/tasks/${taskId}`, {
@@ -220,7 +219,6 @@ taskList.addEventListener("change", async (event) => {
     checkbox.checked = !checkbox.checked;
     showNotice("Couldn't update that task. Try again.");
   }
-  updateSummary();
 });
 
 // Clear all completed tasks
