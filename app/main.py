@@ -3,16 +3,17 @@ from typing import Annotated
 from fastapi import Depends, FastAPI, HTTPException, Header, Request, Query
 from fastapi.concurrency import asynccontextmanager
 from sqlalchemy import create_engine
-from sqlmodel import SQLModel, Session, delete, select
+from sqlmodel import SQLModel, Session, delete, select, create_engine
 from fastapi.middleware.cors import CORSMiddleware
+import os
+from dotenv import load_dotenv
 
-# Database file and url to create
-sqlite_file_name = "database.db"
-sqlite_url = f"sqlite:///{sqlite_file_name}"
-
-# Engine instance
-connect_args = {"check_same_thread": False}
-engine = create_engine(sqlite_url, connect_args=connect_args)
+load_dotenv()
+DATABASE_URL = os.environ["DATABASE_URL"]
+engine = create_engine(
+    DATABASE_URL,
+    pool_pre_ping=True,
+)
 
 
 # Create the database
@@ -43,8 +44,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5500", "http://127.0.0.1:5500"],
     allow_credentials=True,
-    allow_methods=["POST", "PATCH", "GET", "DELETE", "PUT"],
-    allow_headers=["*"],
+    allow_methods=["*"],
+    allow_headers=["X-User-ID", "Content-Type", "Authorization"],
 )
 
 
@@ -64,7 +65,11 @@ async def read_tasks(
 
     try:
         all_tasks = session.exec(
-            select(Task).where(Task.task_owner_id == x_user_id).order_by(Task.task_id).offset(offset).limit(limit)  # type: ignore
+            select(Task)
+            .where(Task.task_owner_id == x_user_id)
+            .order_by(Task.task_id)
+            .offset(offset)
+            .limit(limit)  # type: ignore
         ).all()
 
     except Exception as e:
@@ -99,9 +104,13 @@ async def create_task(
     x_user_id: str = Header(),
 ):
 
+    if not session.get(User, x_user_id):
+        raise HTTPException(404, "Not found - User does not exist")
+
     # Pass in TaskCreate object which omits automatic fields
     db_task = Task.model_validate(task)
     db_task.task_owner_id = x_user_id
+    db_task.is_done = False
     owner = session.get(User, x_user_id)
 
     session.add(db_task)
@@ -165,12 +174,19 @@ async def clear_completed_tasks(session: SessionDep, x_user_id: str = Header()):
     raise HTTPException(204, "Completed tasks have been cleared.")
 
 
-@app.post("/users")
+@app.post("/users/")
 async def create_user(user: UserCreate, session: SessionDep):
+
+    if session.get(User, user.user_id):
+        raise HTTPException(400, "User already exists")
+
     db_user = User.model_validate(user)
     session.add(db_user)
     session.commit()
     session.refresh(db_user)
+
+    print(session.exec(select(User)).all())
+
     return {"data": db_user}
 
 
@@ -180,3 +196,34 @@ async def read_user_by_id(user_id: str, session: SessionDep):
     if not db_user:
         raise HTTPException(404, "Not found - User does not exist")
     return {"data": db_user}
+
+
+@app.get("/users/", response_model=PaginatedResponse[list[User]])
+async def read_users(
+    request: Request,
+    session: SessionDep,
+    offset: int = Query(default=0, ge=0),
+    limit: int = Query(default=20),
+):
+
+    try:
+        all_users = session.exec(
+            select(User)
+            .order_by(User.user_id)
+            .offset(offset)
+            .limit(limit)  # type: ignore
+        ).all()
+
+    except Exception as e:
+        raise HTTPException(500, "Internal Server Error")
+
+    base_url = str(request.url).split("?")[0]
+
+    next_url = f"{base_url}?offset={offset + limit}&limit={limit}"
+
+    if offset > 0:
+        prev_url = f"{base_url}?offset={max(0, offset - limit)}&limit={limit}"
+    else:
+        prev_url = None
+
+    return {"data": all_users, "next": next_url, "prev": prev_url}

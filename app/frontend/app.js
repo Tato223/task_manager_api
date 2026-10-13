@@ -18,8 +18,10 @@ if (!localStorage.getItem("user_id")) {
       headers: {
         "Content-Type": "application/json",
       },
-      body: JSON.stringify({ user_id: local_id }),
+      body: JSON.stringify({ user_id: localStorage.getItem("user_id") }),
     });
+
+    console.log(response);
   } catch (error) {
     console.error("Error creating user:", error);
   }
@@ -228,6 +230,7 @@ form.addEventListener("submit", async (event) => {
   } finally {
     submitButton.disabled = false;
     taskInput.focus();
+    loadPage(currentOffset);
   }
 });
 
@@ -253,6 +256,7 @@ taskList.addEventListener("change", async (event) => {
 
     const apiResponse = await response.json();
     checkbox.checked = apiResponse.data.is_done;
+    loadPage(currentOffset);
   } catch (error) {
     console.log("Error: ", error);
     checkbox.checked = !checkbox.checked;
@@ -271,6 +275,7 @@ clearCompletedButton.addEventListener("click", async () => {
     });
     if (!response.ok)
       throw new Error(`Server responded with ${response.status}`);
+    loadPage(currentOffset);
   } catch (error) {
     console.log("Error: ", error);
     showNotice("Couldn't clear completed tasks. Try again.");
@@ -304,6 +309,8 @@ taskList.addEventListener("click", async (event) => {
     setTimeout(() => {
       taskItem.remove();
     }, 160);
+
+    loadPage(currentOffset);
   } catch (error) {
     console.log("Error: ", error);
     deleteButton.disabled = false;
