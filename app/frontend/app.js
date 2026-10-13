@@ -146,6 +146,7 @@ async function loadPage(offset) {
     taskList.replaceChildren(
       ...tasks.slice(0, PAGE_LIMIT).map(createTaskElement),
     );
+    updateSummary();
     return true;
   } catch (error) {
     console.log("Error: ", error);
@@ -197,8 +198,30 @@ form.addEventListener("submit", async (event) => {
   const newTaskName = taskInput.value.trim();
   if (!newTaskName) return;
 
+  Array.from(taskList.children).forEach((task) => {
+    if (task.querySelector(".task__name").textContent === newTaskName) {
+      showNotice("Task with this name already exists.", true);
+      throw new Error("Duplicate task name");
+    }
+  });
+
   clearNotice();
+
+  console.log(taskList.children);
+
+  taskList.appendChild(
+    createTaskElement({
+      task_name: newTaskName,
+      isDone: false,
+      taskOwnerId: local_id,
+    }),
+  );
+
   submitButton.disabled = true;
+  taskInput.value = "";
+
+  updateSummary();
+  updatePager();
 
   try {
     const response = await fetch(`${API_URL}/tasks`, {
@@ -216,8 +239,6 @@ form.addEventListener("submit", async (event) => {
     if (!response.ok)
       throw new Error(`Server responded with ${response.status}`);
 
-    taskInput.value = "";
-
     if (hasNextPage) {
       showNotice("Task added. It's on a later page.", false);
     }
@@ -232,20 +253,17 @@ form.addEventListener("submit", async (event) => {
   }
 });
 
-// Update a task's completion status
 taskList.addEventListener("change", async (event) => {
   event.preventDefault();
 
   if (!event.target.classList.contains("task__toggle")) return;
 
-  const checkbox = event.target;
-  const taskId = checkbox.closest(".task").dataset.taskId;
-
-  clearNotice();
-
-  updateSummary();
-
   try {
+    const checkbox = event.target;
+    const taskId = checkbox.closest(".task").dataset.taskId;
+
+    updateSummary();
+
     const response = await fetch(`${API_URL}/tasks/${taskId}`, {
       method: "PATCH",
       headers: {
@@ -255,7 +273,6 @@ taskList.addEventListener("change", async (event) => {
     if (!response.ok)
       throw new Error(`Server responded with ${response.status}`);
 
-    loadPage(currentOffset);
     const apiResponse = await response.json();
     checkbox.checked = apiResponse.data.is_done;
   } catch (error) {
@@ -266,14 +283,24 @@ taskList.addEventListener("change", async (event) => {
 });
 
 // Clear all completed tasks
-clearCompletedButton.addEventListener("click", async () => {
+clearCompletedButton.addEventListener("click", async (event) => {
+  event.preventDefault();
+
   try {
+    taskList
+      .querySelectorAll(".task--completed")
+      .forEach((task) => task.remove());
+    // updateSummary();
+
     const response = await fetch(`${API_URL}/tasks/completed/`, {
       method: "DELETE",
       headers: {
         "X-User-ID": local_id,
       },
     });
+
+    loadPage(currentOffset);
+
     if (!response.ok)
       throw new Error(`Server responded with ${response.status}`);
   } catch (error) {
