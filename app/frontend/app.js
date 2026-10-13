@@ -146,7 +146,6 @@ async function loadPage(offset) {
     taskList.replaceChildren(
       ...tasks.slice(0, PAGE_LIMIT).map(createTaskElement),
     );
-    updateSummary();
     return true;
   } catch (error) {
     console.log("Error: ", error);
@@ -230,10 +229,10 @@ form.addEventListener("submit", async (event) => {
   } finally {
     submitButton.disabled = false;
     taskInput.focus();
-    loadPage(currentOffset);
   }
 });
 
+// Update a task's completion status
 taskList.addEventListener("change", async (event) => {
   event.preventDefault();
 
@@ -243,6 +242,8 @@ taskList.addEventListener("change", async (event) => {
   const taskId = checkbox.closest(".task").dataset.taskId;
 
   clearNotice();
+
+  updateSummary();
 
   try {
     const response = await fetch(`${API_URL}/tasks/${taskId}`, {
@@ -254,9 +255,9 @@ taskList.addEventListener("change", async (event) => {
     if (!response.ok)
       throw new Error(`Server responded with ${response.status}`);
 
+    loadPage(currentOffset);
     const apiResponse = await response.json();
     checkbox.checked = apiResponse.data.is_done;
-    loadPage(currentOffset);
   } catch (error) {
     console.log("Error: ", error);
     checkbox.checked = !checkbox.checked;
@@ -275,7 +276,6 @@ clearCompletedButton.addEventListener("click", async () => {
     });
     if (!response.ok)
       throw new Error(`Server responded with ${response.status}`);
-    loadPage(currentOffset);
   } catch (error) {
     console.log("Error: ", error);
     showNotice("Couldn't clear completed tasks. Try again.");
@@ -309,8 +309,6 @@ taskList.addEventListener("click", async (event) => {
     setTimeout(() => {
       taskItem.remove();
     }, 160);
-
-    loadPage(currentOffset);
   } catch (error) {
     console.log("Error: ", error);
     deleteButton.disabled = false;
