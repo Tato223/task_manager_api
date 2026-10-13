@@ -204,13 +204,13 @@ input {
   border: 1px solid var(--line);
   border-radius: 10px;
   padding: 2%;
-  transition: background-color 0.15s;
+  transition: background-color 0.4s;
 }
 
 .tasks__clear:hover {
   background: var(--danger-hover);
   cursor: pointer;
-  transition: background-color 0.15s;
+  transition: background-color 0.4s;
 }
 
 .tasks__clear:active {

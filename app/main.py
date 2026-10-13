@@ -67,8 +67,6 @@ async def read_tasks(
             select(Task).where(Task.task_owner_id == x_user_id).order_by(Task.task_id).offset(offset).limit(limit)  # type: ignore
         ).all()
 
-        print(all_tasks)
-
     except Exception as e:
         raise HTTPException(500, "Internal Server Error")
 
@@ -84,7 +82,6 @@ async def read_tasks(
     return {"data": all_tasks, "next": next_url, "prev": prev_url}
 
 
-# Read task with ID
 @app.get("/tasks/{task_id}", response_model=Response[Task])
 async def read_task_by_id(task_id: int, session: SessionDep):
 
@@ -95,7 +92,6 @@ async def read_task_by_id(task_id: int, session: SessionDep):
     return {"data": this_task}
 
 
-# Create a new task
 @app.post("/tasks", response_model=Response[Task])
 async def create_task(
     task: TaskCreate,
@@ -115,7 +111,6 @@ async def create_task(
     return {"data": db_task}
 
 
-# Change is_done value of a task
 @app.patch("/tasks/{task_id}", response_model=Response[Task])
 async def update_task_status(
     task_id: int,
@@ -138,26 +133,6 @@ async def update_task_status(
     return {"data": updated_task}
 
 
-# Delete the last task
-@app.delete("/tasks/last", response_model=Response[list[Task]])
-async def remove_last_task(session: SessionDep, x_user_id: str = Header()):
-
-    last_task = session.exec(select(Task).order_by(Task.task_id.desc())).first()  # type: ignore
-
-    if not last_task:
-        raise HTTPException(404, "Not found! -- no tasks to delete")
-
-    if last_task.task_owner_id != x_user_id:
-        raise HTTPException(403, "Forbidden - You are not the owner of this task")
-
-    session.delete(last_task)
-    session.commit()
-
-    remaining_tasks = session.exec(select(Task).order_by(Task.task_id)).all()  # type: ignore
-
-    return {"data": remaining_tasks}
-
-
 # Delete specific task
 @app.delete("/tasks/{task_id}", response_model=Response[list[Task]])
 async def remove_specific_task(
@@ -174,7 +149,9 @@ async def remove_specific_task(
     session.delete(task_to_delete)
     session.commit()
 
-    remaining_tasks = session.exec(select(Task)).all()
+    remaining_tasks = session.exec(
+        select(Task).where(Task.task_owner_id == x_user_id)
+    ).all()
 
     return {"data": remaining_tasks}
 
@@ -182,23 +159,10 @@ async def remove_specific_task(
 @app.delete("/tasks/completed/", status_code=204)
 async def clear_completed_tasks(session: SessionDep, x_user_id: str = Header()):
 
-    session.exec(delete(Task).where(Task.is_done == True))  # type: ignore
+    session.exec(delete(Task).where(Task.is_done == True and Task.task_owner_id == x_user_id))  # type: ignore
     session.commit()
 
     raise HTTPException(204, "Completed tasks have been cleared.")
-
-
-# Clear the task list
-@app.delete("/tasks")
-async def clear_tasks(session: SessionDep, x_user_id: str = Header()):
-
-    session.exec(delete(Task))
-    session.commit()
-
-    raise HTTPException(204, "Tasks have been cleared.")
-
-
-print("Successfully compiled!")
 
 
 @app.post("/users")

@@ -25,8 +25,9 @@ if (!localStorage.getItem("user_id")) {
   }
 }
 
-const local_id = localStorage.getItem("user_id");
+// ---------- DOM Values ----------
 
+const local_id = localStorage.getItem("user_id");
 const PAGE_LIMIT = 10;
 
 const tasksPanel = document.querySelector(".tasks");
