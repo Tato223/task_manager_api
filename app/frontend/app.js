@@ -32,31 +32,44 @@ if (!localStorage.getItem("user_id")) {
 const local_id = localStorage.getItem("user_id");
 const PAGE_LIMIT = 10;
 
+const taskInput = document.querySelector(".composer__input");
+const submitButton = document.querySelector(".composer__submit");
+
 const tasksPanel = document.querySelector(".tasks");
 const tasksTitle = document.querySelector(".tasks__title");
 const taskList = document.querySelector(".task-list");
 const taskTemplate = document.querySelector("#task-template");
+
 const listMessage = document.querySelector(".task-list__message");
 const notice = document.querySelector(".notice");
+
 const summary = document.querySelector(".tasks__summary");
 const progressFill = document.querySelector(".progress__fill");
 const form = document.querySelector(".composer");
-const taskInput = document.querySelector(".composer__input");
-const submitButton = document.querySelector(".composer__submit");
+
 const pager = document.querySelector(".pager");
 const prevButton = document.querySelector(".pager__prev");
 const nextButton = document.querySelector(".pager__next");
 const pagerStatus = document.querySelector(".pager__status");
+
 const clearCompletedButton = document.querySelector(".tasks__clear");
 
 let currentOffset = 0;
 let hasNextPage = false;
 let isLoading = false;
+let tempIdCounter = 0;
 
-// ---------- Display helpers ----------
+// ---------- Display helpers ----------\
+
+function checkForDuplicateTask(newTaskName) {
+  return Array.from(taskList.children).some(
+    (task) => task.querySelector(".task__name").textContent === newTaskName,
+  );
+}
 
 function createTaskElement(task) {
   const taskItem = taskTemplate.content.firstElementChild.cloneNode(true);
+
   taskItem.dataset.taskId = task.task_id;
 
   taskItem.querySelector(".task__name").textContent = task.task_name;
@@ -198,24 +211,27 @@ form.addEventListener("submit", async (event) => {
   const newTaskName = taskInput.value.trim();
   if (!newTaskName) return;
 
-  Array.from(taskList.children).forEach((task) => {
-    if (task.querySelector(".task__name").textContent === newTaskName) {
-      showNotice("Task with this name already exists.", true);
-      throw new Error("Duplicate task name");
-    }
-  });
+  if (checkForDuplicateTask(newTaskName)) {
+    showNotice("Task with this name already exists.", true);
+    return;
+  }
 
   clearNotice();
 
   console.log(taskList.children);
 
-  taskList.appendChild(
-    createTaskElement({
-      task_name: newTaskName,
-      isDone: false,
-      taskOwnerId: local_id,
-    }),
-  );
+  let tempTask = createTaskElement({
+    task_name: newTaskName,
+    isDone: false,
+    task_id: -++tempIdCounter,
+  });
+
+  if (!hasNextPage && taskList.children.length < PAGE_LIMIT) {
+    taskList.appendChild(tempTask);
+  } else if (taskList.children.length >= PAGE_LIMIT) {
+    showNotice("Task added. It's on a later page.", false);
+    updatePager();
+  }
 
   submitButton.disabled = true;
   taskInput.value = "";
@@ -231,13 +247,17 @@ form.addEventListener("submit", async (event) => {
         "X-User-ID": local_id,
       },
       body: JSON.stringify({
-        task_name: newTaskName,
+        task_name: tempTask.querySelector(".task__name").textContent,
         is_done: false,
-        task_owner_id: local_id,
       }),
     });
+
     if (!response.ok)
       throw new Error(`Server responded with ${response.status}`);
+
+    const responseData = await response.json();
+    tempTask.dataset.taskId = responseData.data.task_id;
+    console.log("New Task ID: ", tempTask.dataset.taskId);
 
     if (hasNextPage) {
       showNotice("Task added. It's on a later page.", false);
@@ -247,23 +267,25 @@ form.addEventListener("submit", async (event) => {
     showNotice(
       "Couldn't add that task. Check that the API is running and try again.",
     );
+    console.log(error);
+    tempTask.remove();
   } finally {
     submitButton.disabled = false;
     taskInput.focus();
   }
 });
 
+// Update Task Completed Status
 taskList.addEventListener("change", async (event) => {
   event.preventDefault();
 
   if (!event.target.classList.contains("task__toggle")) return;
 
+  const checkbox = event.target;
+  let taskId = checkbox.closest(".task").dataset.taskId;
+  updateSummary();
+
   try {
-    const checkbox = event.target;
-    const taskId = checkbox.closest(".task").dataset.taskId;
-
-    updateSummary();
-
     const response = await fetch(`${API_URL}/tasks/${taskId}`, {
       method: "PATCH",
       headers: {
@@ -273,8 +295,8 @@ taskList.addEventListener("change", async (event) => {
     if (!response.ok)
       throw new Error(`Server responded with ${response.status}`);
 
-    const apiResponse = await response.json();
-    checkbox.checked = apiResponse.data.is_done;
+    const responseData = await response.json();
+    checkbox.checked = responseData.data.is_done;
   } catch (error) {
     console.log("Error: ", error);
     checkbox.checked = !checkbox.checked;
