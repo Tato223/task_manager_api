@@ -218,13 +218,13 @@ form.addEventListener("submit", async (event) => {
 
   clearNotice();
 
-  console.log(taskList.children);
-
   let tempTask = createTaskElement({
     task_name: newTaskName,
     isDone: false,
     task_id: -++tempIdCounter,
   });
+
+  tempTask.classList.add("task--temp");
 
   if (!hasNextPage && taskList.children.length < PAGE_LIMIT) {
     taskList.appendChild(tempTask);
@@ -257,11 +257,13 @@ form.addEventListener("submit", async (event) => {
 
     const responseData = await response.json();
     tempTask.dataset.taskId = responseData.data.task_id;
-    console.log("New Task ID: ", tempTask.dataset.taskId);
 
     if (hasNextPage) {
       showNotice("Task added. It's on a later page.", false);
     }
+
+    tempTask.classList.remove("task--temp");
+
   } catch (error) {
     console.log("Error: ", error);
     showNotice(
@@ -277,6 +279,12 @@ form.addEventListener("submit", async (event) => {
 
 // Update Task Completed Status
 taskList.addEventListener("change", async (event) => {
+  const taskItem = event.target.closest(".task");
+  if (taskItem.classList.contains("task--temp")) {
+    showNotice("Task is still being created. Please wait.", true);
+    return;
+  }
+
   event.preventDefault();
 
   if (!event.target.classList.contains("task__toggle")) return;
@@ -309,6 +317,13 @@ clearCompletedButton.addEventListener("click", async (event) => {
   event.preventDefault();
 
   try {
+    const loaderElement = document.createElement("span", {
+      class: "loader",
+      parent: clearCompletedButton,
+    });
+
+    clearCompletedButton.appendChild(loaderElement);
+
     taskList
       .querySelectorAll(".task--completed")
       .forEach((task) => task.remove());
@@ -320,6 +335,8 @@ clearCompletedButton.addEventListener("click", async (event) => {
         "X-User-ID": local_id,
       },
     });
+
+    loaderElement.remove();
 
     loadPage(currentOffset);
 
