@@ -59,6 +59,8 @@ let hasNextPage = false;
 let isLoading = false;
 let tempIdCounter = 0;
 
+const tasksToDelete = [];
+
 // ---------- Display helpers ----------\
 
 function checkForDuplicateTask(newTaskName) {
@@ -127,6 +129,28 @@ function updatePager() {
   pagerStatus.textContent = `Page ${currentOffset / PAGE_LIMIT + 1}`;
   prevButton.disabled = isLoading || !hasPrevPage;
   nextButton.disabled = isLoading || !hasNextPage;
+}
+
+function optimisticRemoveTasks() {
+  let pendingTaskDeletions = [];
+
+  for (let i = 0; i < taskList.children.length; i++) {
+    let currentElement = taskList.children[i];
+
+    if (currentElement.querySelector(".task__toggle").checked) {
+      taskList.removeChild(currentElement);
+      pendingTaskDeletions.push(currentElement);
+      i--;
+    }
+  }
+
+  return pendingTaskDeletions;
+}
+
+function restorePendingTaskDeletions(pendingTaskDeletions) {
+  pendingTaskDeletions.forEach((element) => {
+    taskList.appendChild(element);
+  });
 }
 
 // ---------- API calls ----------
@@ -263,7 +287,6 @@ form.addEventListener("submit", async (event) => {
     }
 
     tempTask.classList.remove("task--temp");
-
   } catch (error) {
     console.log("Error: ", error);
     showNotice(
@@ -322,12 +345,10 @@ clearCompletedButton.addEventListener("click", async (event) => {
       parent: clearCompletedButton,
     });
 
-    clearCompletedButton.appendChild(loaderElement);
+    const pendingTaskDeletions = optimisticRemoveTasks();
 
-    taskList
-      .querySelectorAll(".task--completed")
-      .forEach((task) => task.remove());
-    // updateSummary();
+    clearCompletedButton.appendChild(loaderElement);
+    updateSummary();
 
     const response = await fetch(`${API_URL}/tasks/completed/`, {
       method: "DELETE",
@@ -337,7 +358,6 @@ clearCompletedButton.addEventListener("click", async (event) => {
     });
 
     loaderElement.remove();
-
     loadPage(currentOffset);
 
     if (!response.ok)
@@ -345,6 +365,7 @@ clearCompletedButton.addEventListener("click", async (event) => {
   } catch (error) {
     console.log("Error: ", error);
     showNotice("Couldn't clear completed tasks. Try again.");
+    restorePendingTaskDeletions(pendingTaskDeletions);
   }
 });
 
