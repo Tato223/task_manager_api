@@ -59,7 +59,8 @@ let hasNextPage = false;
 let isLoading = false;
 let tempIdCounter = 0;
 
-const tasksToDelete = [];
+const submitCooldownTimeInMs = 200;
+const completeTaskCooldownTimeInMs = 500;
 
 // ---------- Display helpers ----------\
 
@@ -260,6 +261,10 @@ form.addEventListener("submit", async (event) => {
   submitButton.disabled = true;
   taskInput.value = "";
 
+  setTimeout(() => {
+    ((submitButton.disabled = false), taskInput.focus());
+  }, submitCooldownTimeInMs);
+
   updateSummary();
   updatePager();
 
@@ -300,6 +305,7 @@ form.addEventListener("submit", async (event) => {
   }
 });
 
+let currentController = null;
 // Update Task Completed Status
 taskList.addEventListener("change", async (event) => {
   const taskItem = event.target.closest(".task");
@@ -308,11 +314,23 @@ taskList.addEventListener("change", async (event) => {
     return;
   }
 
-  event.preventDefault();
-
   if (!event.target.classList.contains("task__toggle")) return;
 
+  if (currentController) {
+    currentController.abort();
+  }
+
+  currentController = new AbortController();
+  const { signal } = currentController;
+
+  event.target.disabled = true;
+  setTimeout(() => {
+    event.target.disabled = false;
+  }, completeTaskCooldownTimeInMs);
+
   const checkbox = event.target;
+  let checkedState = checkbox.checked;
+
   let taskId = checkbox.closest(".task").dataset.taskId;
   updateSummary();
 
@@ -322,6 +340,7 @@ taskList.addEventListener("change", async (event) => {
       headers: {
         "X-User-ID": local_id,
       },
+      signal: signal,
     });
     if (!response.ok)
       throw new Error(`Server responded with ${response.status}`);
@@ -329,9 +348,18 @@ taskList.addEventListener("change", async (event) => {
     const responseData = await response.json();
     checkbox.checked = responseData.data.is_done;
   } catch (error) {
+    if (error.name === "AbortError") {
+      console.log("Request aborted");
+      taskItem.classList.remove("task--updating");
+      updateSummary();
+      return;
+    }
+
     console.log("Error: ", error);
-    checkbox.checked = !checkbox.checked;
+    checkbox.checked = checkedState;
     showNotice("Couldn't update that task. Try again.");
+  } finally {
+    currentController = null;
   }
 });
 
