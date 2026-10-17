@@ -461,8 +461,11 @@ input {
   left: 50%;
   transform: translate(-50%, -50%);
 
-  width: 30dvw;
-  height: 30dvh;
+  width: 32dvw;
+  height: 32dvh;
+
+  min-width: 300px;
+  min-height: 200px;
 
   z-index: 2000;
 
@@ -484,6 +487,9 @@ input {
 .task__edit-popup>h2 {
   grid-area: prompt;
   grid-column: span 3;
+
+  font-size: clamp(1rem, 2vw, 1.4rem);
+  padding: 1%;
 }
 
 .task__edit-popup>form>input {
@@ -494,6 +500,7 @@ input {
   background-color: var(--surface);
   border: none;
   outline: none;
+  padding: 8px;
 }
 
 
@@ -517,8 +524,8 @@ input {
 
 .task__edit-popup__cancel {
   position: fixed;
-  top: 1rem;
-  right: 1rem;
+  top: .5rem;
+  right: .5rem;
   width: 32px;
   height: 32px;
   text-align: center;
@@ -606,6 +613,9 @@ input {
   }
 }
 
+.blur {
+  filter: blur(2px);
+}
 
 /* Touch screens have no hover, so keep the delete button visible */
 @media (hover: none) {

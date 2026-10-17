@@ -7,7 +7,7 @@ from modules import (
     UserCreate,
 )
 from typing import Annotated
-from fastapi import Depends, FastAPI, HTTPException, Header, Request, Query
+from fastapi import Body, Depends, FastAPI, HTTPException, Header, Request, Query
 from fastapi.concurrency import asynccontextmanager
 from sqlalchemy import create_engine
 from sqlmodel import SQLModel, Session, delete, select, create_engine
@@ -130,6 +130,27 @@ async def create_task(
     session.refresh(db_task)
 
     return {"data": db_task}
+
+
+@app.patch("/tasks/{task_id}/name", response_model=Response[Task])
+def update_task_name(
+    task_id: int,
+    session: SessionDep,
+    x_user_id: str = Header(),
+    new_name: str = Body(...),
+):
+    task_to_update = session.get(Task, task_id)
+    if not task_to_update:
+        raise HTTPException(404, "Not found - Task does not exist")
+
+    if task_to_update.task_owner_id != x_user_id:
+        raise HTTPException(403, "Forbidden - You are not the owner of this task")
+
+    task_to_update.task_name = new_name
+    session.commit()
+    session.refresh(task_to_update)
+
+    return {"data": task_to_update}
 
 
 @app.patch("/tasks/{task_id}", response_model=Response[Task])

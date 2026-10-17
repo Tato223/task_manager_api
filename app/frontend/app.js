@@ -61,6 +61,10 @@ let tempIdCounter = 0;
 
 const submitCooldownTimeInMs = 200;
 const completeTaskCooldownTimeInMs = 500;
+const noticeTimeoutInMS = 3000;
+
+let isTaskEditPopupActive = false;
+let selectedTask = null;
 
 // ---------- Display helpers ----------\
 
@@ -98,6 +102,10 @@ function showNotice(text, isError = true) {
   notice.classList.toggle("notice--info", !isError);
   notice.setAttribute("role", isError ? "alert" : "status");
   notice.hidden = false;
+
+  setTimeout(() => {
+    clearNotice();
+  }, noticeTimeoutInMS);
 }
 
 function clearNotice() {
@@ -166,6 +174,7 @@ function createTaskEditPopup() {
   TaskEditContainer.appendChild(TaskEditPrompt);
 
   const TaskEditForm = document.createElement("form");
+  TaskEditForm.classList.add("task__edit-popup-form");
   TaskEditContainer.appendChild(TaskEditForm);
 
   const TaskEditInput = document.createElement("input");
@@ -184,7 +193,7 @@ function createTaskEditPopup() {
   const TaskEditCancel = document.createElement("button");
   TaskEditCancel.classList.add("task__edit-popup__cancel");
   TaskEditCancel.type = "button";
-  TaskEditCancel.textContent = "x";
+  TaskEditCancel.innerHTML = "&#10006;";
   TaskEditContainer.appendChild(TaskEditCancel);
 
   return TaskEditContainer;
@@ -433,14 +442,65 @@ clearCompletedButton.addEventListener("click", async (event) => {
   }
 });
 
-// Edit Task
-taskList.addEventListener("click", (event) => {
+// open Edit Task popup
+taskList.addEventListener("click", async (event) => {
   const editButton = event.target.closest(".task__edit");
   if (!editButton) return;
+
+  document.querySelector("main").classList.add("blur");
 
   const taskItem = editButton.closest(".task");
   const taskEditContainer = createTaskEditPopup(taskItem);
   document.body.appendChild(taskEditContainer);
+
+  taskEditContainer.querySelector("input").focus();
+
+  isTaskEditPopupActive = true;
+  selectedTask = taskItem;
+});
+
+// Change task name
+document.body.addEventListener("submit", async (event) => {
+  if (!event.target.closest(".task__edit-popup-form")) return;
+  if (!isTaskEditPopupActive) return;
+
+  event.preventDefault();
+
+  const taskEditPopup = event.target.closest(".task__edit-popup-form");
+  const taskItem = selectedTask;
+  const currentName = taskItem.querySelector(".task__name").textContent;
+  const newName = taskEditPopup.querySelector("input").value?.trim();
+
+  try {
+    const response = await fetch(
+      `${API_URL}/tasks/${taskItem.dataset.taskId}/name`,
+      {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+          "X-User-ID": local_id,
+        },
+        body: JSON.stringify(newName),
+      },
+    );
+
+    if (!response.ok)
+      throw new Error(`Server responded with ${response.status}`);
+
+    taskItem.querySelector(".task__name").textContent = newName;
+    showNotice("Task name updated successfully.", false);
+  } catch (error) {
+    console.log("Error: ", error);
+    showNotice("Couldn't update the task name. Try again.");
+    taskItem.querySelector(".task__name").textContent = currentName;
+  } finally {
+    const taskEditPopup = document.querySelector(".task__edit-popup");
+    if (taskEditPopup) {
+      taskEditPopup.remove();
+      document.querySelector("main").classList.remove("blur");
+    }
+    isTaskEditPopupActive = false;
+  }
 });
 
 //close task edit popup
@@ -450,6 +510,7 @@ document.body.addEventListener("click", (event) => {
   const taskEditPopup = event.target.closest(".task__edit-popup");
   if (taskEditPopup) {
     taskEditPopup.remove();
+    document.querySelector("main").classList.remove("blur");
   }
 });
 
