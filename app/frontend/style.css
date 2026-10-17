@@ -400,6 +400,34 @@ input {
   color: var(--muted);
 }
 
+.task-buttons-container {
+  display: flex;
+  gap: 0.5rem;
+  margin-left: auto;
+  align-items: center;
+}
+
+.task__edit {
+  flex: none;
+  display: grid;
+  place-items: center;
+  width: 2.25rem;
+  height: 2.25rem;
+  background: transparent;
+  border: 0;
+  border-radius: 8px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s, background-color 0.15s;
+  z-index: 1;
+}
+
+.task__edit:hover {
+  color: var(--accent);
+  background: var(--accent-tint);
+  opacity: 1;
+}
+
 .task__delete {
   flex: none;
   display: grid;
@@ -418,6 +446,100 @@ input {
 .task:hover .task__delete,
 .task:focus-within .task__delete {
   opacity: 1;
+}
+
+.task:hover .task__edit,
+.task:focus-within .task__edit {
+  opacity: .6;
+}
+
+.task__edit-popup {
+  display: grid;
+  place-items: center;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+
+  width: 30dvw;
+  height: 30dvh;
+
+  z-index: 2000;
+
+  background-color: rgba(0, 0, 0, 0.8);
+
+  grid-template-rows: auto 1fr auto;
+  grid-template-columns: 2fr, 2fr, 1fr;
+
+  grid-template-areas:
+    "prompt prompt prompt"
+    "form form form"
+    "submit submit cancel";
+
+  border-radius: 8px;
+
+  padding: 1rem;
+}
+
+.task__edit-popup>h2 {
+  grid-area: prompt;
+  grid-column: span 3;
+}
+
+.task__edit-popup>form>input {
+  grid-area: form;
+  width: 100%;
+  height: 2.5rem;
+  border-radius: 8px;
+  background-color: var(--surface);
+  border: none;
+  outline: none;
+}
+
+
+.task__edit-popup>form>button[type="submit"] {
+  grid-area: submit;
+  padding: 2.5%;
+  width: 100%;
+  border-radius: 8px;
+  background-color: var(--accent);
+  color: var(--on-accent);
+  border: none;
+  font-weight: bold;
+  transition: all 0.15s ease;
+}
+
+.task__edit-popup>form>button[type="submit"]:hover {
+  background-color: var(--accent-strong);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.task__edit-popup__cancel {
+  position: fixed;
+  top: 1rem;
+  right: 1rem;
+  width: 32px;
+  height: 32px;
+  text-align: center;
+  background-color: var(--danger);
+  transition: all 0.15s ease;
+  border: none;
+  border-radius: 4px;
+}
+
+.task__edit-popup__cancel:hover {
+  background-color: var(--danger-hover);
+  transition: all 0.15s ease;
+  cursor: pointer;
+}
+
+.task__edit-popup>form {
+  grid-area: form;
+  gap: 20px;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
 }
 
 .task__delete:hover {

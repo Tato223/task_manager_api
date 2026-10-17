@@ -80,6 +80,9 @@ function createTaskElement(task) {
   taskItem
     .querySelector(".task__delete")
     .setAttribute("aria-label", `Delete task: ${task.task_name}`);
+  taskItem
+    .querySelector(".task__edit")
+    .setAttribute("aria-label", `Edit task: ${task.task_name}`);
 
   return taskItem;
 }
@@ -152,6 +155,39 @@ function restorePendingTaskDeletions(pendingTaskDeletions) {
   pendingTaskDeletions.forEach((element) => {
     taskList.appendChild(element);
   });
+}
+
+function createTaskEditPopup() {
+  const TaskEditContainer = document.createElement("div");
+  TaskEditContainer.classList.add("task__edit-popup");
+
+  const TaskEditPrompt = document.createElement("h2");
+  TaskEditPrompt.textContent = "Enter a new task name";
+  TaskEditContainer.appendChild(TaskEditPrompt);
+
+  const TaskEditForm = document.createElement("form");
+  TaskEditContainer.appendChild(TaskEditForm);
+
+  const TaskEditInput = document.createElement("input");
+  TaskEditInput.type = "text";
+  TaskEditInput.placeholder = "New task name";
+  TaskEditInput.maxLength = 120;
+  TaskEditInput.required = true;
+  TaskEditInput.autofocus = true;
+  TaskEditForm.appendChild(TaskEditInput);
+
+  const TaskEditSubmit = document.createElement("button");
+  TaskEditSubmit.type = "submit";
+  TaskEditSubmit.textContent = "Save";
+  TaskEditForm.appendChild(TaskEditSubmit);
+
+  const TaskEditCancel = document.createElement("button");
+  TaskEditCancel.classList.add("task__edit-popup__cancel");
+  TaskEditCancel.type = "button";
+  TaskEditCancel.textContent = "x";
+  TaskEditContainer.appendChild(TaskEditCancel);
+
+  return TaskEditContainer;
 }
 
 // ---------- API calls ----------
@@ -394,6 +430,26 @@ clearCompletedButton.addEventListener("click", async (event) => {
     console.log("Error: ", error);
     showNotice("Couldn't clear completed tasks. Try again.");
     restorePendingTaskDeletions(pendingTaskDeletions);
+  }
+});
+
+// Edit Task
+taskList.addEventListener("click", (event) => {
+  const editButton = event.target.closest(".task__edit");
+  if (!editButton) return;
+
+  const taskItem = editButton.closest(".task");
+  const taskEditContainer = createTaskEditPopup(taskItem);
+  document.body.appendChild(taskEditContainer);
+});
+
+//close task edit popup
+document.body.addEventListener("click", (event) => {
+  if (!event.target.closest(".task__edit-popup__cancel")) return;
+
+  const taskEditPopup = event.target.closest(".task__edit-popup");
+  if (taskEditPopup) {
+    taskEditPopup.remove();
   }
 });
 
