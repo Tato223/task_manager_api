@@ -1,4 +1,6 @@
-from modules import (
+from pydantic.v1 import ValidationError
+
+from app.backend.modules import (
     Task,
     TaskCreate,
     PaginatedResponse,
@@ -41,7 +43,7 @@ def get_session():
 SessionDep = Annotated[Session, Depends(get_session)]
 
 
-# Create database on startup with test tables
+# Create database on startup
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     create_db_and_tables()
@@ -118,18 +120,22 @@ async def create_task(
     if not session.get(User, x_user_id):
         raise HTTPException(404, "Not found - User does not exist")
 
-    # Pass in TaskCreate object which omits automatic fields
-    db_task = Task.model_validate(task)
-    db_task.task_owner_id = x_user_id
-    db_task.is_done = False
+    try:
+        db_task = Task.model_validate(task)
 
-    session.add(db_task)
-    db_task.task_owner_id = x_user_id
+        db_task.task_owner_id = x_user_id
+        db_task.is_done = False
 
-    session.commit()
-    session.refresh(db_task)
+        session.add(db_task)
+        db_task.task_owner_id = x_user_id
 
-    return {"data": db_task}
+        session.commit()
+        session.refresh(db_task)
+
+        return {"data": db_task}
+
+    except ValidationError as ve:
+        raise HTTPException(422, f"Unprocessable Entity - {ve}")
 
 
 @app.patch("/tasks/{task_id}/name", response_model=Response[Task])
@@ -176,7 +182,7 @@ async def update_task_status(
 
 
 # Delete specific task
-@app.delete("/tasks/{task_id}", response_model=Response[list[Task]])
+@app.delete("/tasks/{task_id}", response_model=Response[list[Task]], status_code=200)
 async def remove_specific_task(
     task_id: int, session: SessionDep, x_user_id: str = Header()
 ):
@@ -188,39 +194,48 @@ async def remove_specific_task(
     if task_to_delete.task_owner_id != x_user_id:
         raise HTTPException(403, "Forbidden - You are not the owner of this task")
 
-    session.delete(task_to_delete)
-    session.commit()
+    try:
+        session.delete(task_to_delete)
+        session.commit()
 
-    remaining_tasks = session.exec(
-        select(Task).where(Task.task_owner_id == x_user_id)
-    ).all()
+        remaining_tasks = session.exec(
+            select(Task).where(Task.task_owner_id == x_user_id)
+        ).all()
 
-    return {"data": remaining_tasks}
+        return {"data": remaining_tasks}
+
+    except Exception as e:
+        raise HTTPException(500, "Internal Server Error")
 
 
 @app.delete("/tasks/completed/", status_code=204)
 async def clear_completed_tasks(session: SessionDep, x_user_id: str = Header()):
 
-    session.exec(delete(Task).where(Task.is_done == True and Task.task_owner_id == x_user_id))  # type: ignore
-    session.commit()
+    try:
+        session.exec(delete(Task).where(Task.is_done == True and Task.task_owner_id == x_user_id))  # type: ignore
+        session.commit()
+
+    except Exception as e:
+        raise HTTPException(500, "Internal Server Error")
 
     raise HTTPException(204, "Completed tasks have been cleared.")
 
 
-@app.post("/users/")
+@app.post("/users/", status_code=201)
 async def create_user(user: UserCreate, session: SessionDep):
 
     if session.get(User, user.user_id):
         raise HTTPException(400, "User already exists")
 
-    db_user = User.model_validate(user)
-    session.add(db_user)
-    session.commit()
-    session.refresh(db_user)
+    try:
+        db_user = User.model_validate(user)
+        session.add(db_user)
+        session.commit()
+        session.refresh(db_user)
+        return {"data": db_user}
 
-    print(session.exec(select(User)).all())
-
-    return {"data": db_user}
+    except ValidationError as ve:
+        raise HTTPException(422, f"Validation Error: {ve}")
 
 
 @app.get("/users/{user_id}", response_model=Response[User])
