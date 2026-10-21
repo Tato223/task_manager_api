@@ -162,6 +162,10 @@ export function optimisticRemoveTasks(taskList) {
       state.pendingTaskDeletions.push(currentElement);
       i--;
     }
+
+    console.log(
+      `pending task deletions in state: ${state.pendingTaskDeletions}`,
+    );
   }
 }
 
@@ -327,6 +331,7 @@ export async function optimisticUpdateTaskCompletion(event) {
   let checkedState = checkbox.checked;
 
   let taskId = checkbox.closest(".task").dataset.taskId;
+
   updateSummary();
 
   return {

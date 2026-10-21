@@ -6,4 +6,5 @@ export const state = {
   selectedTask: null,
   currentController: null,
   pendingTaskDeletions: [],
+  currentUpdateTaskId: null,
 };

@@ -67,13 +67,14 @@ uiService.form.addEventListener("submit", async (event) => {
 
 // Update Task Completed Status
 uiService.taskList.addEventListener("change", async (event) => {
-  if (state.currentController) {
-    state.currentController.abort("Request aborted due to new change");
-    return;
-  }
-
   const { taskId, checkedState, signal, checkbox, taskItem } =
     await uiService.optimisticUpdateTaskCompletion(event);
+
+  if (taskId === state.currentUpdateTaskId) {
+    state.currentController.abort("Request aborted due to new change");
+  }
+
+  state.currentUpdateTaskId = taskId;
 
   try {
     const response = await apiService.updateTaskCompletion(
@@ -131,7 +132,7 @@ uiService.clearCompletedButton.addEventListener("click", async (event) => {
     uiService.showNotice("Couldn't clear completed tasks. Try again.");
     uiService.restorePendingTaskDeletions();
   } finally {
-    state.pendingTaskDeletions = [];
+    state.pendingTaskDeletions.length = 0;
   }
 });
 
