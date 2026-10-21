@@ -5,7 +5,6 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
 from sqlmodel import SQLModel, Session
-from typing import Annotated
 
 # Create the fake DB in-memory
 

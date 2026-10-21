@@ -143,7 +143,7 @@ def update_task_name(
     task_id: int,
     session: SessionDep,
     x_user_id: str = Header(),
-    new_name: str = Body(...),
+    new_name: dict = Body(...),
 ):
     task_to_update = session.get(Task, task_id)
     if not task_to_update:
@@ -152,7 +152,7 @@ def update_task_name(
     if task_to_update.task_owner_id != x_user_id:
         raise HTTPException(403, "Forbidden - You are not the owner of this task")
 
-    task_to_update.task_name = new_name
+    task_to_update.task_name = new_name["task_name"]
     session.commit()
     session.refresh(task_to_update)
 
