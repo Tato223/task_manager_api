@@ -167,7 +167,7 @@ def test_update_task_name(client):
     response = client.patch(
         f"/tasks/{tasks_list[0]['task_id']}/name",
         headers={"X-User-ID": TEST_USER},
-        content="Updated Task Name",
+        json={"task_name": "Updated Task Name"},
     )
 
     assert response.status_code == 200
