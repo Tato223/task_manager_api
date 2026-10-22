@@ -1,5 +1,4 @@
 import { config } from "../config.js";
-import { state } from "./stateService.js";
 const API_URL = config.API_URL;
 
 // Generic request template

@@ -120,8 +120,8 @@ export async function deleteTaskEvent(event) {
     uiService.taskList.removeChild(taskItem);
   }, 160);
   uiService.updateSummary();
-  uiService.loadPage();
   uiService.navigateToPageIfTasksAreEmpty();
+  uiService.goToPreviousPage();
 
   if (uiService.taskList.children.length === 0) {
     uiService.showListMessage("Nothing here yet. Add your first task above.");
