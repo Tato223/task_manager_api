@@ -2,15 +2,15 @@ import { state } from "./stateService.js";
 import { config } from "../config.js";
 import * as apiService from "./apiService.js";
 
-function gotToPreviousPage() {
+function goToPreviousPage() {
   loadPage(Math.max(0, state.currentOffset - config.PAGE_LIMIT));
 }
 
-function gotToNextPage() {
+function goToNextPage() {
   loadPage(state.currentOffset + config.PAGE_LIMIT);
 }
 
-export { gotToPreviousPage, gotToNextPage };
+export { goToPreviousPage, goToNextPage };
 
 export const taskInput = document.querySelector(".composer__input");
 export const submitButton = document.querySelector(".composer__submit");
@@ -58,7 +58,7 @@ export async function loadPage(offset) {
   updatePager();
 
   if (state.currentOffset > 0 && tasksPanel.children.length === 0) {
-    gotToPreviousPage();
+    goToPreviousPage();
   }
 
   try {
@@ -338,7 +338,6 @@ export async function optimisticCreateTask() {
   submitButton.disabled = true;
   taskInput.value = "";
 
-  loadPage(state.currentOffset);
   return tempTask;
 }
 
@@ -381,5 +380,19 @@ export function checkAborted(error, taskItem) {
     console.log("Request aborted");
     taskItem.classList.remove("task--updating");
     return;
+  }
+}
+
+export function navigateToPageIfTasksAreEmpty() {
+  if (taskList.children.length === 0 && state.hasPrevPage) {
+    goToPreviousPage();
+  } else if (taskList.children.length === 0 && state.hasNextPage) {
+    goToNextPage(state.currentOffset);
+  } else {
+    if (taskList.children.length === 0 && state.hasPrevPage) {
+      goToPreviousPage();
+    } else if (taskList.children.length === 0 && state.hasNextPage) {
+      goToNextPage(state.currentOffset);
+    }
   }
 }

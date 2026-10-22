@@ -4,7 +4,7 @@ import * as uiService from "./uiService.js";
 import { state } from "./stateService.js";
 
 export async function createTaskEvent(event) {
-  //   event.preventDefault();
+  event.preventDefault();
 
   let tempTask = await uiService.optimisticCreateTask();
   uiService.clearNotice();
@@ -34,6 +34,7 @@ export async function createTaskEvent(event) {
   } finally {
     uiService.submitButton.disabled = false;
     uiService.taskInput.focus();
+    uiService.loadPage(state.currentOffset);
   }
 }
 
@@ -119,6 +120,8 @@ export async function deleteTaskEvent(event) {
     uiService.taskList.removeChild(taskItem);
   }, 160);
   uiService.updateSummary();
+  uiService.loadPage();
+  uiService.navigateToPageIfTasksAreEmpty();
 
   if (uiService.taskList.children.length === 0) {
     uiService.showListMessage("Nothing here yet. Add your first task above.");
@@ -130,8 +133,6 @@ export async function deleteTaskEvent(event) {
   } catch (error) {
     deleteButton.disabled = false;
     uiService.showNotice("Couldn't delete that task. Try again.");
-  } finally {
-    uiService.loadPage(state.currentOffset);
   }
 }
 
@@ -163,5 +164,6 @@ export async function clearCompletedTasksEvent(event) {
     uiService.restorePendingTaskDeletions();
   } finally {
     state.pendingTaskDeletions.length = 0;
+    uiService.navigateToPageIfTasksAreEmpty();
   }
 }
