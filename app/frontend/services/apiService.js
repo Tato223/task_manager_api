@@ -28,7 +28,7 @@ export async function readTasks(offset, limit, userId) {
 }
 
 export async function updateTaskName(taskId, newName, userId) {
-  return await request(`/tasks/${taskId}`, {
+  return await request(`/tasks/${taskId}/name`, {
     method: "PATCH",
     headers: {
       "Content-Type": "application/json",

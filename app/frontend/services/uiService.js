@@ -2,6 +2,16 @@ import { state } from "./stateService.js";
 import { config } from "../config.js";
 import * as apiService from "./apiService.js";
 
+function gotToPreviousPage() {
+  loadPage(Math.max(0, state.currentOffset - config.PAGE_LIMIT));
+}
+
+function gotToNextPage() {
+  loadPage(state.currentOffset + config.PAGE_LIMIT);
+}
+
+export { gotToPreviousPage, gotToNextPage };
+
 export const taskInput = document.querySelector(".composer__input");
 export const submitButton = document.querySelector(".composer__submit");
 
@@ -44,12 +54,17 @@ export function createTaskElement(task) {
 
 export async function loadPage(offset) {
   state.isLoading = true;
+  state.currentOffset = offset;
   updatePager();
+
+  if (state.currentOffset > 0 && tasksPanel.children.length === 0) {
+    gotToPreviousPage();
+  }
 
   try {
     const tasks = await apiService.readTasks(
       offset,
-      config.PAGE_LIMIT + 1,
+      config.PAGE_LIMIT,
       state.local_id,
     );
 
@@ -57,7 +72,7 @@ export async function loadPage(offset) {
       return await loadPage(Math.max(0, offset - config.PAGE_LIMIT));
     }
 
-    mapTasksToUI(tasks, offset, config.PAGE_LIMIT, createTaskElement);
+    mapTasksToUI(tasks, offset, createTaskElement);
     updateSummary();
 
     if (tasks.length === 0) {
@@ -123,34 +138,50 @@ export function updateSummary() {
   progressFill.style.width = `${(done / total) * 100}%`;
 }
 
-export async function mapTasksToUI(tasks, offset, pageLimit, createFn) {
+export async function mapTasksToUI(tasks, offset, createFn) {
+  if (tasks.length > config.PAGE_LIMIT) {
+    state.hasNextPage = true;
+  } else {
+    state.hasNextPage = false;
+  }
+
+  if (state.currentOffset > 0) {
+    state.hasPrevPage = true;
+  } else {
+    state.hasPrevPage = false;
+  }
+
+  pager.hidden = !state.hasNextPage && !state.hasPrevPage;
+
   if (tasks.length === 0 && offset > 0) {
-    return await apTasksToUI(
+    return await mapTasksToUI(
       [],
-      Math.max(0, offset - pageLimit),
-      pageLimit,
+      Math.max(0, offset - config.PAGE_LIMIT),
       createFn,
     );
   } else if (tasks.length === 0 && offset === 0) {
     showListMessage("Nothing here yet. Add your first task above.");
   }
 
-  taskList.replaceChildren(...tasks.slice(0, pageLimit).map(createFn));
+  taskList.replaceChildren(...tasks.slice(0, config.PAGE_LIMIT).map(createFn));
 }
 
 export function updatePager() {
-  let hasPrevPage = state.currentOffset > 0;
+  state.currentOffset > 0
+    ? (state.hasPrevPage = true)
+    : (state.hasPrevPage = false);
 
-  pager.hidden =
-    !hasPrevPage &&
-    !(typeof state.hasNextPage !== "undefined" && state.hasNextPage);
+  !state.hasPrevPage && !state.hasNextPage
+    ? (pager.hidden = true)
+    : (pager.hidden = false);
 
-  pagerStatus.textContent = `Page ${state.currentOffset / config.pageLimit + 1}`;
+  pagerStatus.textContent = `Page ${state.currentOffset / config.PAGE_LIMIT + 1}`;
   prevButton.disabled = state.isLoading || !state.hasPrevPage;
-  nextButton.disabled =
-    state.isLoading ||
-    !(typeof state.hasNextPage !== "undefined" && state.hasNextPage);
-  config.pageLimit = config.pageLimit;
+  nextButton.disabled = state.isLoading || !state.hasNextPage;
+
+  console.log(
+    `currentOffset: ${state.currentOffset}, hasPrevPage: ${state.hasPrevPage}, hasNextPage: ${state.hasNextPage}`,
+  );
 }
 
 export function optimisticRemoveTasks(taskList) {
@@ -243,10 +274,10 @@ async function goToPage(offset) {
 checkPrefersReducedMotion();
 
 prevButton.addEventListener("click", () =>
-  goToPage(Math.max(0, state.currentOffset - PAGE_LIMIT)),
+  goToPage(Math.max(0, state.currentOffset - config.PAGE_LIMIT)),
 );
 nextButton.addEventListener("click", () =>
-  goToPage(state.currentOffset + PAGE_LIMIT),
+  goToPage(state.currentOffset + config.PAGE_LIMIT),
 );
 
 export async function showTaskEditPopup(event) {
@@ -261,6 +292,7 @@ export async function showTaskEditPopup(event) {
 
   taskEditContainer.querySelector("input").focus();
   state.selectedTask = taskItem;
+  state.isTaskEditPopupActive = true;
 }
 
 export async function closeTaskEditPopup() {
@@ -269,6 +301,7 @@ export async function closeTaskEditPopup() {
     taskEditPopup.remove();
     document.querySelector("main").classList.remove("blur");
   }
+  state.isTaskEditPopupActive = false;
 }
 
 function checkForDuplicateTask(newTaskName) {
@@ -299,13 +332,13 @@ export async function optimisticCreateTask() {
     taskList.appendChild(tempTask);
   } else if (taskList.children.length >= config.PAGE_LIMIT) {
     showNotice("Task added. It's on a later page.", false);
-
     updatePager();
   }
 
   submitButton.disabled = true;
   taskInput.value = "";
 
+  loadPage(state.currentOffset);
   return tempTask;
 }
 
