@@ -3,7 +3,7 @@ import * as uiService from "./services/uiService.js";
 import { state } from "./services/stateService.js";
 import * as taskService from "./services/taskService.js";
 
-// ---------- User ID Generation ----------
+// ---------- User ID ----------
 
 function generateUserID() {
   const id = new Uint32Array(1);
@@ -11,51 +11,77 @@ function generateUserID() {
   return id[0].toString(36);
 }
 
-if (!localStorage.getItem("user_id")) {
-  localStorage.setItem("user_id", generateUserID());
-  apiService.createUser(localStorage.getItem("user_id"));
-  state.local_id = localStorage.getItem("user_id");
+async function ensureUser() {
+  const existing = localStorage.getItem("user_id");
+  if (existing) return existing;
+
+  const userId = generateUserID();
+
+  try {
+    await apiService.createUser(userId);
+  } catch (error) {
+    if (error.status !== 409) throw error; // 409 = already created, fine
+  }
+
+  localStorage.setItem("user_id", userId);
+  return userId;
 }
 
-state.local_id = localStorage.getItem("user_id");
-state.isPaginated = state.currentOffset > 0 || state.hasNextPage;
-state.scope = state.isPaginated ? " on this page" : "";
+// ---------- Event wiring ----------
 
-uiService.loadPage(state.currentOffset);
+function bindEvents() {
+  uiService.form.addEventListener("submit", taskService.createTaskEvent);
 
-// Create a new task on form submission
-uiService.form.addEventListener("submit", async (event) => {
-  await taskService.createTaskEvent(event);
-});
+  uiService.taskList.addEventListener(
+    "change",
+    taskService.updateTaskCompletionEvent,
+  );
 
-// Update Task Completed Status
-uiService.taskList.addEventListener("change", async (event) => {
-  await taskService.updateTaskCompletionEvent(event);
-});
+  uiService.taskList.addEventListener("click", (event) => {
+    uiService.showTaskEditPopup(event);
+    taskService.deleteTaskEvent(event);
+  });
 
-// Clear all completed tasks
-uiService.clearCompletedButton.addEventListener("click", async (event) => {
-  await taskService.clearCompletedTasksEvent(event);
-});
+  uiService.clearCompletedButton.addEventListener(
+    "click",
+    taskService.clearCompletedTasksEvent,
+  );
 
-// open Edit Task popup
-uiService.taskList.addEventListener("click", async (event) => {
-  uiService.showTaskEditPopup(event);
-});
+  uiService.prevButton.addEventListener("click", uiService.goToPreviousPage);
+  uiService.nextButton.addEventListener("click", uiService.goToNextPage);
 
-// Change task name
-document.body.addEventListener("submit", async (event) => {
-  await taskService.updateTaskNameEvent(event);
-});
+  // edit popup: save
+  document.body.addEventListener("submit", taskService.updateTaskNameEvent);
 
-//close task edit popup
-document.body.addEventListener("click", (event) => {
-  if (!event.target.closest(".task__edit-popup__cancel")) return;
+  // edit popup: cancel button
+  document.body.addEventListener("click", (event) => {
+    if (event.target.closest(".task__edit-popup__cancel")) {
+      uiService.closeTaskEditPopup();
+    }
+  });
 
-  uiService.closeTaskEditPopup();
-});
+  // edit popup: Escape key
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape") uiService.closeTaskEditPopup();
+  });
+}
 
-// Delete a task
-uiService.taskList.addEventListener("click", async (event) => {
-  await taskService.deleteTaskEvent(event);
-});
+// ---------- Start ----------
+
+async function init() {
+  try {
+    state.local_id = await ensureUser();
+  } catch (error) {
+    console.error("Could not initialise user:", error);
+    uiService.showListMessage(
+      "Couldn't reach the server. Refresh to try again.",
+      true,
+    );
+    return;
+  }
+
+  bindEvents();
+  await uiService.loadPage(0);
+}
+
+init();

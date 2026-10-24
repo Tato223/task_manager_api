@@ -2,15 +2,9 @@ import { state } from "./stateService.js";
 import { config } from "../config.js";
 import * as apiService from "./apiService.js";
 
-function goToPreviousPage() {
-  loadPage(Math.max(0, state.currentOffset - config.PAGE_LIMIT));
-}
+const EMPTY_MESSAGE = "Nothing here yet. Add your first task above.";
 
-function goToNextPage() {
-  loadPage(state.currentOffset + config.PAGE_LIMIT);
-}
-
-export { goToPreviousPage, goToNextPage };
+// ---------- DOM references ----------
 
 export const taskInput = document.querySelector(".composer__input");
 export const submitButton = document.querySelector(".composer__submit");
@@ -34,66 +28,10 @@ export const pagerStatus = document.querySelector(".pager__status");
 
 export const clearCompletedButton = document.querySelector(".tasks__clear");
 
-export function createTaskElement(task) {
-  const taskItem = taskTemplate.content.firstElementChild.cloneNode(true);
+// ---------- Notices & list messages ----------
 
-  taskItem.dataset.taskId = task.task_id;
-  taskItem.dataset.taskName = task.task_name;
-
-  taskItem.querySelector(".task__name").textContent = task.task_name;
-  taskItem.querySelector(".task__toggle").checked = task.is_done;
-  taskItem
-    .querySelector(".task__delete")
-    .setAttribute("aria-label", `Delete task: ${task.task_name}`);
-  taskItem
-    .querySelector(".task__edit")
-    .setAttribute("aria-label", `Edit task: ${task.task_name}`);
-
-  return taskItem;
-}
-
-export async function loadPage(offset) {
-  state.isLoading = true;
-  state.currentOffset = offset;
-  updatePager();
-
-  if (state.currentOffset > 0 && tasksPanel.children.length === 0) {
-    goToPreviousPage();
-  }
-
-  try {
-    const tasks = await apiService.readTasks(
-      offset,
-      config.PAGE_LIMIT,
-      state.local_id,
-    );
-
-    if (tasks.length === 0 && offset > 0) {
-      return await loadPage(Math.max(0, offset - config.PAGE_LIMIT));
-    }
-
-    mapTasksToUI(tasks, offset, createTaskElement);
-    updateSummary();
-
-    if (tasks.length === 0) {
-      showListMessage("Nothing here yet. Add your first task above.");
-    } else {
-      hideListMessage();
-    }
-
-    return true;
-  } catch (error) {
-    console.log("Error: ", error);
-
-    displayLoadPageError();
-
-    return false;
-  } finally {
-    state.isLoading = false;
-    updatePager();
-    updateSummary();
-  }
-}
+let noticeTimer = null;
+let loadFailed = false;
 
 export function showListMessage(text, isError = false) {
   listMessage.textContent = text;
@@ -106,141 +44,149 @@ export function hideListMessage() {
 }
 
 export function showNotice(text, isError = true) {
+  clearTimeout(noticeTimer);
   notice.textContent = text;
   notice.classList.toggle("notice--info", !isError);
   notice.setAttribute("role", isError ? "alert" : "status");
   notice.hidden = false;
 
-  setTimeout(() => {
-    clearNotice();
-  }, config.noticeTimeoutInMS);
+  noticeTimer = setTimeout(clearNotice, config.noticeTimeoutInMS);
 }
 
 export function clearNotice() {
+  clearTimeout(noticeTimer);
   notice.hidden = true;
   notice.textContent = "";
+}
+
+// ---------- Rendering ----------
+
+export function setTaskName(taskItem, name) {
+  taskItem.dataset.taskName = name;
+  taskItem.querySelector(".task__name").textContent = name;
+  taskItem
+    .querySelector(".task__delete")
+    .setAttribute("aria-label", `Delete task: ${name}`);
+  taskItem
+    .querySelector(".task__edit")
+    .setAttribute("aria-label", `Edit task: ${name}`);
+}
+
+export function createTaskElement(task) {
+  const taskItem = taskTemplate.content.firstElementChild.cloneNode(true);
+
+  taskItem.dataset.taskId = task.task_id;
+  setTaskName(taskItem, task.task_name);
+  taskItem.querySelector(".task__toggle").checked = Boolean(task.is_done);
+
+  return taskItem;
+}
+
+function renderTasks(tasks) {
+  state.hasNextPage = tasks.length > config.PAGE_LIMIT;
+  state.hasPrevPage = state.currentOffset > 0;
+
+  taskList.replaceChildren(
+    ...tasks.slice(0, config.PAGE_LIMIT).map((task) => createTaskElement(task)),
+  );
 }
 
 export function updateSummary() {
   const total = taskList.children.length;
   const done = taskList.querySelectorAll(".task__toggle:checked").length;
 
-  progressFill.style.width = "0%";
-
   if (total === 0) {
     summary.textContent = "";
-    showListMessage("Nothing here yet. Add your first task above.");
+    progressFill.style.width = "0%";
+    if (!loadFailed) showListMessage(EMPTY_MESSAGE);
     return;
   }
 
+  loadFailed = false;
+  hideListMessage();
+
+  const scope =
+    state.currentOffset > 0 || state.hasNextPage ? " on this page" : "";
+
   summary.textContent =
-    done === total ? `All ${total} done` : `${done} of ${total} done`;
+    done === total
+      ? `All ${total} done${scope}`
+      : `${done} of ${total} done${scope}`;
   progressFill.style.width = `${(done / total) * 100}%`;
 }
 
-export async function mapTasksToUI(tasks, offset, createFn) {
-  if (tasks.length > config.PAGE_LIMIT) {
-    state.hasNextPage = true;
-  } else {
-    state.hasNextPage = false;
-  }
-
-  if (state.currentOffset > 0) {
-    state.hasPrevPage = true;
-  } else {
-    state.hasPrevPage = false;
-  }
-
-  pager.hidden = !state.hasNextPage && !state.hasPrevPage;
-
-  if (tasks.length === 0 && offset > 0) {
-    return await mapTasksToUI(
-      [],
-      Math.max(0, offset - config.PAGE_LIMIT),
-      createFn,
-    );
-  } else if (tasks.length === 0 && offset === 0) {
-    showListMessage("Nothing here yet. Add your first task above.");
-  }
-
-  taskList.replaceChildren(...tasks.slice(0, config.PAGE_LIMIT).map(createFn));
-}
-
 export function updatePager() {
-  state.currentOffset > 0
-    ? (state.hasPrevPage = true)
-    : (state.hasPrevPage = false);
-
-  !state.hasPrevPage && !state.hasNextPage
-    ? (pager.hidden = true)
-    : (pager.hidden = false);
+  state.hasPrevPage = state.currentOffset > 0;
+  pager.hidden = !state.hasPrevPage && !state.hasNextPage;
 
   pagerStatus.textContent = `Page ${state.currentOffset / config.PAGE_LIMIT + 1}`;
   prevButton.disabled = state.isLoading || !state.hasPrevPage;
   nextButton.disabled = state.isLoading || !state.hasNextPage;
-
-  console.log(
-    `currentOffset: ${state.currentOffset}, hasPrevPage: ${state.hasPrevPage}, hasNextPage: ${state.hasNextPage}`,
-  );
 }
 
-export function optimisticRemoveTasks(taskList) {
-  for (let i = 0; i < taskList.children.length; i++) {
-    let currentElement = taskList.children[i];
-
-    if (currentElement.querySelector(".task__toggle").checked) {
-      taskList.removeChild(currentElement);
-      state.pendingTaskDeletions.push(currentElement);
-      i--;
-    }
-
-    console.log(
-      `pending task deletions in state: ${state.pendingTaskDeletions}`,
+function displayLoadPageError() {
+  if (taskList.children.length === 0) {
+    loadFailed = true;
+    showListMessage(
+      "Couldn't load your tasks. Make sure the API is running, then refresh.",
+      true,
     );
+  } else {
+    showNotice("Couldn't load that page. Try again.");
   }
 }
 
-export function restorePendingTaskDeletions() {
-  state.pendingTaskDeletions.forEach((element) => {
-    taskList.appendChild(element);
-  });
+// ---------- Loading & pagination ----------
+
+let loadSeq = 0;
+
+export async function loadPage(offset) {
+  const seq = ++loadSeq;
+  const previousOffset = state.currentOffset;
+
+  state.isLoading = true;
+  state.currentOffset = offset;
+  loadFailed = false;
+  updatePager();
+
+  if (taskList.children.length === 0) showListMessage("Loading your tasks…");
+
+  try {
+    const tasks = await apiService.readTasks(
+      offset,
+      config.PAGE_LIMIT,
+      state.local_id,
+    );
+
+    if (seq !== loadSeq) return false;
+
+    if (tasks.length === 0 && offset > 0) {
+      return await loadPage(Math.max(0, offset - config.PAGE_LIMIT));
+    }
+
+    renderTasks(tasks);
+    return true;
+  } catch (error) {
+    if (seq !== loadSeq) return false;
+
+    console.error("Failed to load tasks:", error);
+    state.currentOffset = previousOffset;
+    displayLoadPageError();
+    return false;
+  } finally {
+    if (seq === loadSeq) {
+      state.isLoading = false;
+      updatePager();
+      updateSummary();
+    }
+  }
 }
 
-export function createTaskEditPopup() {
-  const TaskEditContainer = document.createElement("div");
-  TaskEditContainer.classList.add("task__edit-popup");
-
-  const TaskEditPrompt = document.createElement("h2");
-  TaskEditPrompt.textContent = "Enter a new task name";
-  TaskEditContainer.appendChild(TaskEditPrompt);
-
-  const TaskEditForm = document.createElement("form");
-  TaskEditForm.classList.add("task__edit-popup-form");
-  TaskEditContainer.appendChild(TaskEditForm);
-
-  const TaskEditInput = document.createElement("input");
-  TaskEditInput.type = "text";
-  TaskEditInput.placeholder = "New task name";
-  TaskEditInput.maxLength = 120;
-  TaskEditInput.required = true;
-  TaskEditInput.autofocus = true;
-  TaskEditForm.appendChild(TaskEditInput);
-
-  const TaskEditSubmit = document.createElement("button");
-  TaskEditSubmit.type = "submit";
-  TaskEditSubmit.textContent = "Save";
-  TaskEditForm.appendChild(TaskEditSubmit);
-
-  const TaskEditCancel = document.createElement("button");
-  TaskEditCancel.classList.add("task__edit-popup__cancel");
-  TaskEditCancel.type = "button";
-  TaskEditCancel.innerHTML = "&#10006;";
-  TaskEditContainer.appendChild(TaskEditCancel);
-
-  return TaskEditContainer;
+export function refreshPage() {
+  return loadPage(state.currentOffset);
 }
 
-export function checkPrefersReducedMotion() {
+export function scrollToTasksTop() {
   const prefersReducedMotion = window.matchMedia(
     "(prefers-reduced-motion: reduce)",
   ).matches;
@@ -251,88 +197,50 @@ export function checkPrefersReducedMotion() {
   tasksTitle.focus({ preventScroll: true });
 }
 
-export function displayLoadPageError() {
-  if (taskList.children.length === 0) {
-    showListMessage(
-      "Couldn't load your tasks. Make sure the API is running, then refresh.",
-      true,
-    );
-  } else {
-    showNotice("Couldn't load that page. Try again.");
-    updateSummary();
-  }
-}
-
-// Moves to another page, then brings the top of the list back into view
-async function goToPage(offset) {
+export async function goToPage(offset) {
   clearNotice();
-
   const loaded = await loadPage(offset);
-  if (!loaded) return;
+  if (loaded) scrollToTasksTop();
 }
 
-checkPrefersReducedMotion();
+export const goToPreviousPage = () =>
+  goToPage(Math.max(0, state.currentOffset - config.PAGE_LIMIT));
 
-prevButton.addEventListener("click", () =>
-  goToPage(Math.max(0, state.currentOffset - config.PAGE_LIMIT)),
-);
-nextButton.addEventListener("click", () =>
-  goToPage(state.currentOffset + config.PAGE_LIMIT),
-);
+export const goToNextPage = () =>
+  goToPage(state.currentOffset + config.PAGE_LIMIT);
 
-export async function showTaskEditPopup(event) {
-  const editButton = event.target.closest(".task__edit");
-  if (!editButton) return;
+// ---------- Optimistic helpers ----------
 
-  document.querySelector("main").classList.add("blur");
-
-  const taskItem = editButton.closest(".task");
-  const taskEditContainer = createTaskEditPopup(taskItem);
-  document.body.appendChild(taskEditContainer);
-
-  taskEditContainer.querySelector("input").focus();
-  state.selectedTask = taskItem;
-  state.isTaskEditPopupActive = true;
-}
-
-export async function closeTaskEditPopup() {
-  const taskEditPopup = document.querySelector(".task__edit-popup");
-  if (taskEditPopup) {
-    taskEditPopup.remove();
-    document.querySelector("main").classList.remove("blur");
-  }
-  state.isTaskEditPopupActive = false;
-}
-
-function checkForDuplicateTask(newTaskName) {
+export function isDuplicateName(name, exceptItem = null) {
   return Array.from(taskList.children).some(
-    (task) => task.querySelector(".task__name").textContent === newTaskName,
+    (item) => item !== exceptItem && item.dataset.taskName === name,
   );
 }
 
 let tempIdCounter = 0;
-export async function optimisticCreateTask() {
-  const newTaskName = taskInput.value.trim();
-  if (!newTaskName) return;
 
-  if (checkForDuplicateTask(newTaskName)) {
+export function optimisticCreateTask() {
+  clearNotice();
+
+  const newTaskName = taskInput.value.trim();
+  if (!newTaskName) return null;
+
+  if (isDuplicateName(newTaskName)) {
     showNotice("Task with this name already exists.", true);
-    return;
+    return null;
   }
 
-  let tempTask = createTaskElement({
-    task_name: newTaskName,
-    isDone: false,
+  const tempTask = createTaskElement({
     task_id: -++tempIdCounter,
+    task_name: newTaskName,
+    is_done: false,
   });
-
   tempTask.classList.add("task--temp");
 
   if (!state.hasNextPage && taskList.children.length < config.PAGE_LIMIT) {
     taskList.appendChild(tempTask);
-  } else if (taskList.children.length >= config.PAGE_LIMIT) {
+  } else {
     showNotice("Task added. It's on a later page.", false);
-    updatePager();
   }
 
   submitButton.disabled = true;
@@ -340,59 +248,115 @@ export async function optimisticCreateTask() {
 
   return tempTask;
 }
+export function removeTaskElement(taskItem) {
+  taskItem.classList.add("task--removing");
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      taskItem.remove();
+      resolve();
+    }, 160);
+  });
+}
 
-export async function optimisticUpdateTaskCompletion(event) {
-  const taskItem = event.target.closest(".task");
+// Put a removed task back where it was (used when a DELETE fails)
+export function restoreTaskElement(taskItem, nextSibling) {
+  const reference =
+    nextSibling && nextSibling.parentNode === taskList ? nextSibling : null;
+  taskItem.classList.remove("task--removing");
+  taskList.insertBefore(taskItem, reference);
+}
+
+// Remember each completed task AND its position so it can be restored in order
+export function optimisticRemoveCompleted() {
+  state.pendingTaskDeletions.length = 0;
+
+  Array.from(taskList.children).forEach((element, index) => {
+    if (element.querySelector(".task__toggle").checked) {
+      state.pendingTaskDeletions.push({ element, index });
+      element.remove();
+    }
+  });
+}
+
+export function restorePendingTaskDeletions() {
+  // ascending index order keeps every task at its original position
+  state.pendingTaskDeletions.forEach(({ element, index }) => {
+    taskList.insertBefore(element, taskList.children[index] ?? null);
+  });
+  state.pendingTaskDeletions.length = 0;
+}
+
+// ---------- Edit popup ----------
+
+export function createTaskEditPopup(currentName = "") {
+  const container = document.createElement("div");
+  container.classList.add("task__edit-popup");
+  container.setAttribute("role", "dialog");
+  container.setAttribute("aria-modal", "true");
+  container.setAttribute("aria-labelledby", "task-edit-title");
+
+  const prompt = document.createElement("h2");
+  prompt.id = "task-edit-title";
+  prompt.textContent = "Enter a new task name";
+  container.appendChild(prompt);
+
+  const editForm = document.createElement("form");
+  editForm.classList.add("task__edit-popup-form");
+  container.appendChild(editForm);
+
+  const input = document.createElement("input");
+  input.type = "text";
+  input.placeholder = "New task name";
+  input.maxLength = 120;
+  input.required = true;
+  input.value = currentName;
+  editForm.appendChild(input);
+
+  const saveButton = document.createElement("button");
+  saveButton.type = "submit";
+  saveButton.textContent = "Save";
+  editForm.appendChild(saveButton);
+
+  const cancelButton = document.createElement("button");
+  cancelButton.classList.add("task__edit-popup__cancel");
+  cancelButton.type = "button";
+  cancelButton.setAttribute("aria-label", "Cancel");
+  cancelButton.innerHTML = "&#10006;";
+  container.appendChild(cancelButton);
+
+  return container;
+}
+
+export function showTaskEditPopup(event) {
+  const editButton = event.target.closest(".task__edit");
+  if (!editButton || state.isTaskEditPopupActive) return;
+
+  const taskItem = editButton.closest(".task");
 
   if (taskItem.classList.contains("task--temp")) {
     showNotice("Task is still being created. Please wait.", true);
     return;
   }
 
-  if (!event.target.classList.contains("task__toggle")) return;
+  document.querySelector("main").classList.add("blur");
 
-  state.currentController = new AbortController();
-  const { signal } = state.currentController;
+  const popup = createTaskEditPopup(taskItem.dataset.taskName);
+  document.body.appendChild(popup);
 
-  event.target.disabled = true;
-  setTimeout(() => {
-    event.target.disabled = false;
-  }, config.completeTaskCooldownTimeInMs);
+  const input = popup.querySelector("input");
+  input.focus();
+  input.select();
 
-  const checkbox = event.target;
-  let checkedState = checkbox.checked;
-
-  let taskId = checkbox.closest(".task").dataset.taskId;
-
-  updateSummary();
-
-  return {
-    taskId,
-    checkedState,
-    signal,
-    checkbox,
-    taskItem,
-  };
+  state.selectedTask = taskItem;
+  state.isTaskEditPopupActive = true;
 }
 
-export function checkAborted(error, taskItem) {
-  if (error.name === "AbortError") {
-    console.log("Request aborted");
-    taskItem.classList.remove("task--updating");
-    return;
+export function closeTaskEditPopup() {
+  const popup = document.querySelector(".task__edit-popup");
+  if (popup) {
+    popup.remove();
+    document.querySelector("main").classList.remove("blur");
+    state.selectedTask?.querySelector(".task__edit")?.focus();
   }
-}
-
-export function navigateToPageIfTasksAreEmpty() {
-  if (taskList.children.length === 0 && state.hasPrevPage) {
-    goToPreviousPage();
-  } else if (taskList.children.length === 0 && state.hasNextPage) {
-    goToNextPage(state.currentOffset);
-  } else {
-    if (taskList.children.length === 0 && state.hasPrevPage) {
-      goToPreviousPage();
-    } else if (taskList.children.length === 0 && state.hasNextPage) {
-      goToNextPage(state.currentOffset);
-    }
-  }
+  state.isTaskEditPopupActive = false;
 }
