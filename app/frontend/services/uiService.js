@@ -258,7 +258,6 @@ export function removeTaskElement(taskItem) {
   });
 }
 
-// Put a removed task back where it was (used when a DELETE fails)
 export function restoreTaskElement(taskItem, nextSibling) {
   const reference =
     nextSibling && nextSibling.parentNode === taskList ? nextSibling : null;
@@ -266,7 +265,6 @@ export function restoreTaskElement(taskItem, nextSibling) {
   taskList.insertBefore(taskItem, reference);
 }
 
-// Remember each completed task AND its position so it can be restored in order
 export function optimisticRemoveCompleted() {
   state.pendingTaskDeletions.length = 0;
 
@@ -279,7 +277,6 @@ export function optimisticRemoveCompleted() {
 }
 
 export function restorePendingTaskDeletions() {
-  // ascending index order keeps every task at its original position
   state.pendingTaskDeletions.forEach(({ element, index }) => {
     taskList.insertBefore(element, taskList.children[index] ?? null);
   });

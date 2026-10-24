@@ -193,9 +193,8 @@ export async function deleteTaskEvent(event) {
   try {
     await apiService.deleteTask(taskItem.dataset.taskId, state.local_id);
   } catch (error) {
-    // DELETE is idempotent: a 404 means it's already gone, which is success.
     if (error.status !== 404) {
-      await removal; // make sure it's detached before re-inserting
+      await removal;
       uiService.restoreTaskElement(taskItem, nextSibling);
       deleteButton.disabled = false;
       uiService.showNotice("Couldn't delete that task. Try again.");
@@ -209,7 +208,7 @@ export async function deleteTaskEvent(event) {
 // ---------- Clear completed ----------
 
 export async function clearCompletedTasksEvent(event) {
-  // event.preventDefault();
+  event.preventDefault();
 
   const button = uiService.clearCompletedButton;
   if (button.disabled) return;
@@ -228,7 +227,6 @@ export async function clearCompletedTasksEvent(event) {
     uiService.updateSummary();
   } finally {
     button.disabled = false;
-    // server cleared completed tasks on ALL pages, so re-sync this page
     await endMutation({ refresh: true });
   }
 }

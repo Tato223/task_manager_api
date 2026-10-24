@@ -20,7 +20,7 @@ async function ensureUser() {
   try {
     await apiService.createUser(userId);
   } catch (error) {
-    if (error.status !== 409) throw error; // 409 = already created, fine
+    if (error.status !== 409) throw error;
   }
 
   localStorage.setItem("user_id", userId);
