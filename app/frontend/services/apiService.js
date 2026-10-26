@@ -1,4 +1,4 @@
-import { config } from "app/frontend/config.js";
+import { config } from "../config.js";
 const API_URL = config.API_URL;
 
 export class ApiError extends Error {

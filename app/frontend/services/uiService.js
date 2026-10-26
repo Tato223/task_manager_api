@@ -1,5 +1,5 @@
 import { state } from "./stateService.js";
-import { config } from "app/frontend/config.js";
+import { config } from "../config.js";
 import * as apiService from "./apiService.js";
 
 const EMPTY_MESSAGE = "Nothing here yet. Add your first task above.";
