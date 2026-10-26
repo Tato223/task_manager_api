@@ -1,4 +1,4 @@
-import { config } from "../config.js";
+import { config } from "app/frontend/config.js";
 import * as apiService from "./apiService.js";
 import * as uiService from "./uiService.js";
 import { state } from "./stateService.js";
