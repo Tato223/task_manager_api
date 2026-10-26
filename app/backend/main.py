@@ -55,9 +55,12 @@ app = FastAPI(root_path="/api/v1", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5500", "http://127.0.0.1:5500"],
+    allow_origins=[
+        "https://priora-backend.vercel.app/",
+        "https://priora-frontend.vercel.app/",
+    ],
     allow_credentials=True,
-    allow_methods=["*"],
+    allow_methods=["GET", "POST", "PATCH", "DELETE"],
     allow_headers=["X-User-ID", "Content-Type", "Authorization"],
 )
 
