@@ -1,6 +1,6 @@
 from pydantic.v1 import ValidationError
 
-from app.backend.modules import (
+from modules import (
     Task,
     TaskCreate,
     PaginatedResponse,
