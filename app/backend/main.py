@@ -57,10 +57,9 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://priora-frontend.vercel.app",
-        "https://priora-frontend-72uol3g69-tato223.vercel.app",
-        "https://priora-frontend-git-main-tato223.vercel.app",
+        "https://priora-task.vercel.app",
     ],
-    allow_origin_regex=r"https://priora-frontend-.*-tato223\.vercel\.app",
+    allow_origin_regex=r"https://priora-.*-tato223\.vercel\.app",
     allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
     allow_headers=[

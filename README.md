@@ -2,7 +2,7 @@
 
 A full-stack task manager with a FastAPI REST backend, a MySQL database, and a framework-free JavaScript frontend. Priora focuses on a fast, responsive interface: changes appear instantly in the UI and are reconciled with the server in the background.
 
-**Live demo:** [Priora](https://priora-frontend.vercel.app/) <br>
+**Live demo:** [Priora](https://priora-task.vercel.app/) <br>
 **API docs:** [Priora/docs](https://priora-backend.vercel.app/docs/)
 
 ![Priora main interface](og-image.png)
