@@ -63,7 +63,13 @@ app.add_middleware(
     allow_origin_regex=r"https://priora-frontend-.*-tato223\.vercel\.app",
     allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "DELETE", "OPTIONS"],
-    allow_headers=["X-User-ID", "Content-Type", "Authorization"],
+    allow_headers=[
+        "X-User-ID",
+        "Content-Type",
+        "Authorization",
+        "Access-Control-Allow-Origin",
+        "Access-Control-Allow-Headers",
+    ],
 )
 
 
