@@ -56,10 +56,9 @@ app = FastAPI(root_path="/api/v1", lifespan=lifespan)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
-        "https://priora-backend.vercel.app/",
-        "https://priora-frontend.vercel.app/",
-        "https://priora-frontend-72uol3g69-tato223.vercel.app/",
-        "https://priora-frontend-git-main-tato223.vercel.app/",
+        "https://priora-frontend.vercel.app",
+        "https://priora-frontend-72uol3g69-tato223.vercel.app",
+        "https://priora-frontend-git-main-tato223.vercel.app",
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PATCH", "DELETE"],
